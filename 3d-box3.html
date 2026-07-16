@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Bento — React + drei (verbatim reference stack)</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    #root { width: 100vw; height: 100vh; }
+    input[type=range] { height: 2px; background: #ddd; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px; background: #111; border-radius: 50%; cursor: pointer;
+    }
+  </style>
+
+  <!-- Import map — R3F / drei / csg all share one three + react version so peer deps resolve -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react":              "https://esm.sh/react@19.2.7",
+      "react/jsx-runtime":  "https://esm.sh/react@19.2.7/jsx-runtime",
+      "react-dom":          "https://esm.sh/react-dom@19.2.7",
+      "react-dom/client":   "https://esm.sh/react-dom@19.2.7/client",
+      "three":              "https://esm.sh/three@0.169.0",
+      "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.6.1?deps=react@19.2.7,three@0.169.0&external=react,three",
+      "@react-three/drei":  "https://esm.sh/@react-three/drei@10.7.7?deps=react@19.2.7,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
+      "@react-three/csg":   "https://esm.sh/@react-three/csg@4.0.0?deps=react@19.2.7,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
+      "three-stdlib":       "https://esm.sh/three-stdlib@2.35.0?deps=three@0.169.0&external=three"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- error surface so we can see cross-origin script errors -->
+  <pre id="err" style="position:fixed;top:10px;left:10px;right:10px;background:rgba(180,0,0,0.92);color:#fff;padding:10px 14px;font:12px monospace;white-space:pre-wrap;display:none;z-index:99;border-radius:8px;max-height:60vh;overflow:auto"></pre>
+  <script>
+    window.addEventListener('error', e => {
+      const el = document.getElementById('err'); el.style.display = 'block';
+      el.textContent = '[error] ' + (e.error?.stack || e.error?.message || e.message);
+    });
+    window.addEventListener('unhandledrejection', e => {
+      const el = document.getElementById('err'); el.style.display = 'block';
+      el.textContent = '[promise] ' + (e.reason?.stack || e.reason?.message || e.reason);
+    });
+  </script>
+
+  <!-- Babel Standalone: compiles TSX in-browser so this file works via file:// double-click -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+  <script type="text/babel" data-presets="react,typescript" data-type="module">
+    /** @jsxRuntime classic */
+    /** @jsx React.createElement */
+    /** @jsxFrag React.Fragment */
+    import * as React from 'react';
+    const { useMemo, useState, useEffect, useRef, Suspense } = React;
+    import { createRoot } from 'react-dom/client';
+    import { Canvas, useThree, useFrame } from '@react-three/fiber';
+    import { Environment, OrbitControls, Float, MeshTransmissionMaterial } from '@react-three/drei';
+    import { Geometry, Base, Subtraction, Addition } from '@react-three/csg';
+    import { RoundedBoxGeometry } from 'three-stdlib';
+    import * as THREE from 'three';
+
+    /* ══════════════════════════════════════════════
+       Shared constants: box + cell positions (in the box's local coords)
+       ══════════════════════════════════════════════ */
+
+    const BOX_W = 2.8, BOX_H = 1.0, BOX_D = 1.8, WALL = 0.04;
+    const HOLE_W = (BOX_W - 3 * WALL) / 2;
+    const HOLE_D = (BOX_D - 3 * WALL) / 2;
+    const LEFT_X  = -BOX_W / 2 + WALL + HOLE_W / 2;
+    const RIGHT_X = -LEFT_X;
+    const FRONT_Z = BOX_D / 2 - WALL - HOLE_D / 2;
+    const BACK_Z  = -FRONT_Z;
+    const CELL_Y  = 0.45;   // above the cavity floor so the apple plane sits INSIDE the compartment
+
+    // 4 cells in local coords (parent group transforms them)
+    const CELLS = [
+      { x: LEFT_X,  y: CELL_Y, z: BACK_Z  },  // 0: back-left
+      { x: RIGHT_X, y: CELL_Y, z: BACK_Z  },  // 1: back-right
+      { x: LEFT_X,  y: CELL_Y, z: FRONT_Z },  // 2: front-left
+      { x: RIGHT_X, y: CELL_Y, z: FRONT_Z },  // 3: front-right
+    ];
+
+    const APPLE_SRCS = [
+      'img/fruits/apple/c.svg',
+      'img/fruits/apple/e.svg',
+      'img/fruits/apple/f.svg',
+      'img/fruits/apple/g.svg',
+    ];
+
+    /* Load SVGs as THREE.Textures per-component so we can wait for load before
+       creating the material (avoids the "shader compiled without USE_MAP" trap). */
+    function useAppleTexture(src) {
+      const [tex, setTex] = useState(null);
+      useEffect(() => {
+        const img = new Image();
+        img.onload = () => {
+          const t = new THREE.Texture(img);
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.minFilter = THREE.LinearFilter;
+          t.magFilter = THREE.LinearFilter;
+          t.generateMipmaps = false;
+          t.needsUpdate = true;
+          setTex(t);
+        };
+        img.onerror = e => console.error('apple load failed:', src, e);
+        img.src = src;
+      }, [src]);
+      return tex;
+    }
+
+    /* 3D apple — waits for texture to load, then renders as an OPAQUE plane with
+       alphaTest cutout so it's captured by MeshTransmissionMaterial's transmission
+       buffer (which is what lets the glass "see" and refract the apple). */
+    function Apple3D({ appleId, cellIndex }) {
+      const cell = CELLS[cellIndex];
+      const tex = useAppleTexture(APPLE_SRCS[appleId]);
+      if (!tex) return null;   // don't create the material until texture is ready
+      return (
+        <mesh position={[cell.x, cell.y, cell.z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.9, 0.9]} />
+          <meshBasicMaterial
+            map={tex}
+            alphaTest={0.5}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      );
+    }
+
+    /* Tracks the box group's on-screen position; writes into a ref every frame
+       so React can compute "is the floating apple close enough to snap?". */
+    function BoxScreenTracker({ groupRef, posRef }) {
+      useFrame(({ camera, size }) => {
+        if (!groupRef.current) return;
+        const worldPos = new THREE.Vector3();
+        groupRef.current.getWorldPosition(worldPos);
+        const clip = worldPos.clone().project(camera);
+        // account for camera.setViewOffset — clip is in FULL virtual frustum space
+        const view = camera.view;
+        if (view && view.enabled) {
+          const virtualX = (clip.x + 1) / 2 * view.fullWidth;
+          const virtualY = (-clip.y + 1) / 2 * view.fullHeight;
+          posRef.current = { x: virtualX - view.offsetX, y: virtualY - view.offsetY };
+        } else {
+          posRef.current = {
+            x: (clip.x + 1) / 2 * size.width,
+            y: (-clip.y + 1) / 2 * size.height,
+          };
+        }
+      });
+      return null;
+    }
+
+    /* ══════════════════════════════════════════════
+       GlassCube — copied verbatim from the reference folder
+       ══════════════════════════════════════════════ */
+
+    function useTaperedBox(width, height, depth, radius, topScale, yOffset, xOffset, zOffset) {
+      return useMemo(() => {
+        const g = new RoundedBoxGeometry(width, height, depth, 4, radius);
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const localY = pos.getY(i);
+          const absoluteY = localY + yOffset;
+          const normalizedY = absoluteY + 0.5;
+          const scale = 1 + normalizedY * (topScale - 1);
+
+          const localX = pos.getX(i);
+          const absoluteX = localX + xOffset;
+          pos.setX(i, absoluteX * scale - xOffset);
+
+          const localZ = pos.getZ(i);
+          const absoluteZ = localZ + zOffset;
+          pos.setZ(i, absoluteZ * scale - zOffset);
+        }
+        g.computeVertexNormals();
+        return g;
+      }, [width, height, depth, radius, topScale, yOffset, xOffset, zOffset]);
+    }
+
+    function GlassCube({ transmission, roughness, ior, rotationX, glassColor, attenuationColor, envMapIntensity }) {
+      const taperScale = 1.05;
+      const boxW = 2.8, boxH = 1.0, boxD = 1.8;
+      const rad = 0.15, wall = 0.04;
+      const holeW = (boxW - 3 * wall) / 2;
+      const holeD = (boxD - 3 * wall) / 2;
+      const holeH = 1.0;
+      const innerRad = 0.1;
+      const leftX  = -boxW / 2 + wall + holeW / 2;
+      const rightX = -leftX;
+      const frontZ = boxD / 2 - wall - holeD / 2;
+      const backZ  = -frontZ;
+
+      const baseGeom = useTaperedBox(boxW, boxH, boxD, rad, taperScale, 0, 0, 0);
+      const rimGeom  = useTaperedBox(boxW + 0.15, 0.08, boxD + 0.15, rad, taperScale, 0.46, 0, 0);
+      const holeGeom1 = useTaperedBox(holeW, holeH, holeD, innerRad, taperScale, 0.15, leftX,  backZ);
+      const holeGeom2 = useTaperedBox(holeW, holeH, holeD, innerRad, taperScale, 0.15, rightX, backZ);
+      const holeGeom3 = useTaperedBox(holeW, holeH, holeD, innerRad, taperScale, 0.15, leftX,  frontZ);
+      const holeGeom4 = useTaperedBox(holeW, holeH, holeD, innerRad, taperScale, 0.15, rightX, frontZ);
+
+      return (
+        <mesh position={[0, 0, 0]}>
+          <Geometry computeVertexNormals>
+            <Base>
+              <primitive object={baseGeom} attach="geometry" />
+            </Base>
+            <Addition position={[0, 0.46, 0]}>
+              <primitive object={rimGeom} attach="geometry" />
+            </Addition>
+            <Subtraction position={[leftX,  0.15, backZ]}>
+              <primitive object={holeGeom1} attach="geometry" />
+            </Subtraction>
+            <Subtraction position={[rightX, 0.15, backZ]}>
+              <primitive object={holeGeom2} attach="geometry" />
+            </Subtraction>
+            <Subtraction position={[leftX,  0.15, frontZ]}>
+              <primitive object={holeGeom3} attach="geometry" />
+            </Subtraction>
+            <Subtraction position={[rightX, 0.15, frontZ]}>
+              <primitive object={holeGeom4} attach="geometry" />
+            </Subtraction>
+          </Geometry>
+          <MeshTransmissionMaterial
+            backside
+            backsideThickness={5.0}
+            thickness={3.5}
+            chromaticAberration={0.08}
+            anisotropicBlur={0.2}
+            roughness={roughness}
+            ior={ior}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+            color={glassColor}
+            attenuationColor={attenuationColor}
+            attenuationDistance={4.0}
+            transmission={transmission * 0.95}
+            transparent
+            opacity={1}
+            distortion={0.3}
+            distortionScale={0.4}
+            resolution={1024}
+            envMapIntensity={envMapIntensity}
+          />
+        </mesh>
+      );
+    }
+
+    /* ══════════════════════════════════════════════
+       ViewOffset — shifts the rendered viewport DOWN so the box (which sits
+       exactly at the OrbitControls target) appears in the lower part of the
+       frame. Rotation still pivots around the box itself.
+       ══════════════════════════════════════════════ */
+
+    function ViewOffset({ shift = 0.2 }) {
+      const { camera, size } = useThree();
+      useEffect(() => {
+        if (typeof camera.setViewOffset !== 'function') return;
+        camera.setViewOffset(
+          size.width,
+          size.height * (1 + shift),
+          0,
+          -size.height * shift,
+          size.width,
+          size.height,
+        );
+        return () => camera.clearViewOffset();
+      }, [camera, size.width, size.height, shift]);
+      return null;
+    }
+
+    /* ══════════════════════════════════════════════
+       App — reference App.tsx stripped down （在这里改3d盒子）
+       ══════════════════════════════════════════════ */
+
+    function App() {
+      const rotationX      = 0.7;
+      const transmission   = 0.85;
+      const roughness      = 0.22;
+      const ior            = 1.0;
+      const glassColor     = '#ffffff';
+      const attenuationColor = '#e0f3ff';
+      const envMapIntensity  = 3.0;
+      const lightIntensity   = 1.5;
+
+      // 4 apples — each starts floating on the 2D page; snaps into a cell when dropped near the box
+      const [apples, setApples] = useState([
+        { id: 0, state: 'floating', x: 60,  y: 120, cell: null },
+        { id: 1, state: 'floating', x: 60,  y: 260, cell: null },
+        { id: 2, state: 'floating', x: 60,  y: 400, cell: null },
+        { id: 3, state: 'floating', x: 60,  y: 540, cell: null },
+      ]);
+
+      // BoxScreenTracker writes the box's on-screen center pixel into this ref every frame
+      const boxScreenRef = useRef({ x: 0, y: 0 });
+      const groupRef     = useRef(null);
+      const draggingIdRef = useRef(null);
+      const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+      // ── drag handlers on the HTML floating apples ─────────────────
+      const onApplePointerDown = (e, id) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        draggingIdRef.current = id;
+        dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        e.stopPropagation();
+      };
+      const onWindowMove = (e) => {
+        const id = draggingIdRef.current;
+        if (id == null) return;
+        const nx = e.clientX - dragOffsetRef.current.x;
+        const ny = e.clientY - dragOffsetRef.current.y;
+        setApples(prev => prev.map(a => a.id === id ? { ...a, x: nx, y: ny } : a));
+      };
+      const onWindowUp = () => {
+        const id = draggingIdRef.current;
+        draggingIdRef.current = null;
+        if (id == null) return;
+        setApples(prev => {
+          const apple = prev.find(a => a.id === id);
+          if (!apple) return prev;
+          const bx = boxScreenRef.current.x, by = boxScreenRef.current.y;
+          const appleCenterX = apple.x + 55, appleCenterY = apple.y + 55;
+          const dist = Math.hypot(appleCenterX - bx, appleCenterY - by);
+          console.log('drop', { id, box: { bx, by }, apple: { cx: appleCenterX, cy: appleCenterY }, dist });
+          if (dist > 260) return prev;    // was 180 — widened
+          const takenCells = new Set(prev.filter(a => a.state === 'snapped').map(a => a.cell));
+          let target = null;
+          for (let c = 0; c < CELLS.length; c++) {
+            if (!takenCells.has(c)) { target = c; break; }
+          }
+          if (target === null) return prev;
+          return prev.map(a => a.id === id ? { ...a, state: 'snapped', cell: target } : a);
+        });
+      };
+
+      useEffect(() => {
+        window.addEventListener('pointermove', onWindowMove);
+        window.addEventListener('pointerup', onWindowUp);
+        return () => {
+          window.removeEventListener('pointermove', onWindowMove);
+          window.removeEventListener('pointerup', onWindowUp);
+        };
+      }, []);
+
+      // click a snapped apple to un-snap it back to the sidebar
+      const unsnapApple = (id) => {
+        setApples(prev => prev.map(a => a.id === id
+          ? { ...a, state: 'floating', cell: null, x: 60, y: 120 + a.id * 140 }
+          : a));
+      };
+
+      return (
+        <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#f8f9fa', position: 'relative' }}>
+          <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
+            <ViewOffset shift={0.17} />
+            <color attach="background" args={['#f8f9fa']} />
+            <ambientLight intensity={lightIntensity * 0.25} />
+            <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
+            <spotLight position={[-10, 10, -10]} angle={0.3} penumbra={1} intensity={lightIntensity * 0.6} color="#e0eaff" />
+            <Suspense fallback={null}>
+              <Float speed={2} rotationIntensity={0} floatIntensity={0.5}>
+                <group ref={groupRef} rotation={[rotationX, 0, 0]} scale={1.55}>
+                  <GlassCube
+                    transmission={transmission}
+                    roughness={roughness}
+                    ior={ior}
+                    glassColor={glassColor}
+                    attenuationColor={attenuationColor}
+                    envMapIntensity={envMapIntensity}
+                  />
+                  {apples.filter(a => a.state === 'snapped').map(a => (
+                    <group key={a.id} onClick={(e) => { e.stopPropagation(); unsnapApple(a.id); }}>
+                      <Apple3D appleId={a.id} cellIndex={a.cell} />
+                    </group>
+                  ))}
+                </group>
+              </Float>
+              <BoxScreenTracker groupRef={groupRef} posRef={boxScreenRef} />
+              <Environment preset="warehouse" />
+            </Suspense>
+            <OrbitControls
+              enablePan={false}
+              enableZoom
+              minDistance={3}
+              maxDistance={15}
+              target={[0, 0, 0]}
+              makeDefault
+            />
+          </Canvas>
+
+          {/* HTML floating apples — absolutely positioned over the Canvas */}
+          {apples.filter(a => a.state === 'floating').map(a => (
+            <img
+              key={a.id}
+              src={APPLE_SRCS[a.id]}
+              draggable={false}
+              onPointerDown={(e) => onApplePointerDown(e, a.id)}
+              style={{
+                position: 'absolute',
+                left: a.x, top: a.y,
+                width: 110, height: 110,
+                objectFit: 'contain',
+                cursor: 'grab',
+                userSelect: 'none',
+                WebkitUserDrag: 'none',
+                filter: 'drop-shadow(0 10px 14px rgba(60,30,30,0.28))',
+                zIndex: 5,
+              }}
+              alt=""
+            />
+          ))}
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

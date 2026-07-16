@@ -47,6 +47,9 @@
     });
   </script>
 
+  <!-- Embedded PNG data URLs allow WebGL textures to work when opened via file:// -->
+  <script src="img/fruits/Cut Fruit/Apple/textures.js"></script>
+
   <!-- Babel Standalone: compiles TSX in-browser so this file works via file:// double-click -->
   <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
@@ -85,73 +88,191 @@
     ];
 
     const APPLE_SRCS = [
-      'img/fruits/apple/c.svg',
-      'img/fruits/apple/e.svg',
-      'img/fruits/apple/f.svg',
-      'img/fruits/apple/g.svg',
+      'img/fruits/Whole Fruit/Apple/Green.png',
+      'img/fruits/Whole Fruit/Apple/Red.png',
+      'img/fruits/Whole Fruit/Apple/Yellow.png',
     ];
+    const APPLE_TEXTURE_SRCS = window.APPLE_TEXTURE_SRCS;
 
-    /* Load SVGs as THREE.Textures per-component so we can wait for load before
-       creating the material (avoids the "shader compiled without USE_MAP" trap). */
     function useAppleTexture(src) {
-      const [tex, setTex] = useState(null);
-      useEffect(() => {
-        const img = new Image();
-        img.onload = () => {
-          const t = new THREE.Texture(img);
-          t.colorSpace = THREE.SRGBColorSpace;
-          t.minFilter = THREE.LinearFilter;
-          t.magFilter = THREE.LinearFilter;
-          t.generateMipmaps = false;
-          t.needsUpdate = true;
-          setTex(t);
-        };
-        img.onerror = e => console.error('apple load failed:', src, e);
-        img.src = src;
+      const texture = useMemo(() => {
+        const loaded = new THREE.TextureLoader().load(src);
+        loaded.colorSpace = THREE.SRGBColorSpace;
+        loaded.minFilter = THREE.LinearFilter;
+        loaded.magFilter = THREE.LinearFilter;
+        loaded.generateMipmaps = false;
+        return loaded;
       }, [src]);
-      return tex;
+
+      useEffect(() => () => texture.dispose(), [texture]);
+      return texture;
     }
 
-    /* 3D apple — waits for texture to load, then renders as an OPAQUE plane with
-       alphaTest cutout so it's captured by MeshTransmissionMaterial's transmission
-       buffer (which is what lets the glass "see" and refract the apple). */
+    /* 每片水果都是独立的无光照平面，并继承盒子的旋转。
+       固定绘制顺序只控制水果之间的遮挡，不影响盒子对水果的遮挡。 */
     function Apple3D({ appleId, cellIndex }) {
       const cell = CELLS[cellIndex];
-      const tex = useAppleTexture(APPLE_SRCS[appleId]);
-      if (!tex) return null;   // don't create the material until texture is ready
+      const texture = useAppleTexture(APPLE_TEXTURE_SRCS[appleId]);
+      // 左侧格子整体向左校正，右侧格子整体向右校正，让内容在各自格子中居中。
+      const cellCenterShift = cell.x < 0 ? -0.04 : 0.04;
+      const planeTilt = -1.05;
+      const columns = [-0.32, -0.19, 0.1, 0.23];
+      const rotations = [-0.045, -0.018, 0.018, 0.045, -0.04, -0.012, 0.02, 0.05];
+      const rows = [
+        // 屏幕上排：xShift 越小越靠左；z 越小越靠盒子深处。
+        { y: 0.02, z: -0.12, xShift: -0.04 },
+        // 屏幕下排：xShift 越大越靠右；z 越大越靠盒子开口，并遮住上排。
+        { y: 0.07, z: 0.13, xShift: 0.10 },
+      ];
+      const pieces = rows.flatMap((row, rowIndex) =>
+        columns.map((x, columnIndex) => ({
+          x: x + row.xShift,
+          y: row.y,
+          // 每片增加少量真实前后间距来产生视差，renderOrder 固定重叠顺序。
+          z: row.z + (3 - columnIndex) * 0.008,
+          rotation: rotations[rowIndex * 4 + columnIndex],
+          layer: rowIndex * 4 + (3 - columnIndex),
+        }))
+      );
+
       return (
-        <mesh position={[cell.x, cell.y, cell.z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.9, 0.9]} />
-          <meshBasicMaterial
-            map={tex}
-            alphaTest={0.5}
-            side={THREE.DoubleSide}
-            toneMapped={false}
-          />
-        </mesh>
+        <group>
+          {pieces.map((piece, index) => (
+            <mesh
+              key={index}
+              position={[
+                cell.x + cellCenterShift + piece.x,
+                cell.y - 0.08 + piece.y,
+                cell.z + piece.z,
+              ]}
+              rotation={[planeTilt, 0, piece.rotation]}
+              renderOrder={20 + piece.layer}
+            >
+              <planeGeometry args={[0.6, 0.6]} />
+              <meshBasicMaterial
+                map={texture}
+                transparent={false}
+                alphaTest={0.5}
+                depthTest
+                depthWrite
+                polygonOffset
+                polygonOffsetFactor={-(piece.layer + 1) * 2}
+                polygonOffsetUnits={-(piece.layer + 1) * 8}
+                side={THREE.DoubleSide}
+                toneMapped={false}
+              />
+            </mesh>
+          ))}
+        </group>
       );
     }
 
-    /* Tracks the box group's on-screen position; writes into a ref every frame
-       so React can compute "is the floating apple close enough to snap?". */
-    function BoxScreenTracker({ groupRef, posRef }) {
+    /* A camera-facing 3D control: visually flat like HTML, but participates in
+       WebGL depth and transmission so the compartment can pass in front of it. */
+    function CloseButton3D({ position, onRemove }) {
+      const texture = useMemo(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.16)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 5;
+        ctx.beginPath();
+        ctx.arc(128, 128, 80, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = '#111111';
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(101, 101);
+        ctx.lineTo(155, 155);
+        ctx.moveTo(155, 101);
+        ctx.lineTo(101, 155);
+        ctx.stroke();
+
+        const map = new THREE.CanvasTexture(canvas);
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.minFilter = THREE.LinearFilter;
+        map.magFilter = THREE.LinearFilter;
+        map.generateMipmaps = false;
+        map.needsUpdate = true;
+        return map;
+      }, []);
+
+      useEffect(() => () => texture.dispose(), [texture]);
+
+      return (
+        <sprite
+          position={position}
+          scale={[0.14, 0.14, 1]}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={() => { document.body.style.cursor = 'default'; }}
+        >
+          <spriteMaterial
+            map={texture}
+            transparent={false}
+            alphaTest={0.1}
+            depthTest
+            depthWrite
+            toneMapped={false}
+          />
+        </sprite>
+      );
+    }
+
+    /* Keep the reference app's screen-quadrant drop model, but derive its bounds
+       from this file's larger, lower box instead of assuming a 600x500 box. */
+    function BoxScreenTracker({ groupRef, screenRef }) {
       useFrame(({ camera, size }) => {
         if (!groupRef.current) return;
-        const worldPos = new THREE.Vector3();
-        groupRef.current.getWorldPosition(worldPos);
-        const clip = worldPos.clone().project(camera);
-        // account for camera.setViewOffset — clip is in FULL virtual frustum space
-        const view = camera.view;
-        if (view && view.enabled) {
-          const virtualX = (clip.x + 1) / 2 * view.fullWidth;
-          const virtualY = (-clip.y + 1) / 2 * view.fullHeight;
-          posRef.current = { x: virtualX - view.offsetX, y: virtualY - view.offsetY };
-        } else {
-          posRef.current = {
+        const toScreen = (worldPos) => {
+          const clip = worldPos.clone().project(camera);
+          // setViewOffset is already baked into Three.js's projection matrix.
+          return {
             x: (clip.x + 1) / 2 * size.width,
             y: (-clip.y + 1) / 2 * size.height,
           };
+        };
+
+        groupRef.current.updateWorldMatrix(true, false);
+
+        const projectedCells = CELLS.map((cell) => {
+          const cellWorld = new THREE.Vector3(cell.x, cell.y, cell.z);
+          groupRef.current.localToWorld(cellWorld);
+          return toScreen(cellWorld);
+        });
+
+        const outerCorners = [];
+        for (const x of [-BOX_W / 2 - 0.08, BOX_W / 2 + 0.08]) {
+          for (const y of [-BOX_H / 2, BOX_H / 2 + 0.08]) {
+            for (const z of [-BOX_D / 2 - 0.08, BOX_D / 2 + 0.08]) {
+              const corner = new THREE.Vector3(x, y, z);
+              groupRef.current.localToWorld(corner);
+              outerCorners.push(toScreen(corner));
+            }
+          }
         }
+
+        const xs = outerCorners.map(point => point.x);
+        const ys = outerCorners.map(point => point.y);
+        screenRef.current = {
+          centerX: projectedCells.reduce((sum, cell) => sum + cell.x, 0) / 4,
+          centerY: projectedCells.reduce((sum, cell) => sum + cell.y, 0) / 4,
+          minX: Math.min(...xs),
+          maxX: Math.max(...xs),
+          minY: Math.min(...ys),
+          maxY: Math.max(...ys),
+        };
       });
       return null;
     }
@@ -226,28 +347,76 @@
             </Subtraction>
           </Geometry>
           <MeshTransmissionMaterial
+            /* ===== 玻璃高级参数：一般先调整 App() 中的基础设置 ===== */
             backside
-            backsideThickness={5.0}
-            thickness={3.5}
-            chromaticAberration={0.08}
+            /* 玻璃背面厚度：越大，边缘折射越明显。 */
+            backsideThickness={3.0}
+            /* 玻璃厚度：越大，折射和颜色吸收越明显。 */
+            thickness={2.1}
+            /* 彩色色散强度：0 为无彩边，数值越大彩边越明显。 */
+            chromaticAberration={0.02}
+            /* 各向异性模糊：越大，玻璃内的影像越柔和。 */
             anisotropicBlur={0.2}
             roughness={roughness}
             ior={ior}
+            /* 清漆高光：clearcoat 控制强度，clearcoatRoughness 控制高光模糊。 */
             clearcoat={1}
             clearcoatRoughness={0.1}
             color={glassColor}
             attenuationColor={attenuationColor}
-            attenuationDistance={4.0}
-            transmission={transmission * 0.95}
+            /* 颜色吸收距离：越小，attenuationColor 的染色越明显。 */
+            attenuationDistance={3.8}
+            transmission={transmission * 0.90}
+            /* opacity 保持 1；透明感主要通过 transmission 调整。 */
             transparent
             opacity={1}
+            /* 玻璃扭曲：distortion 控制强度，distortionScale 控制扭曲尺度。 */
             distortion={0.3}
             distortionScale={0.4}
+            /* 折射缓冲精度：越高越清晰，但性能消耗越大。 */
             resolution={1024}
             envMapIntensity={envMapIntensity}
           />
         </mesh>
       );
+    }
+
+    /* ══════════════════════════════════════════════
+       AutoReturn — when the user releases the mouse after orbiting, smoothly
+       ease the camera back to its initial position. Uses lerp with a low
+       coefficient so the motion feels weighted rather than snappy.
+       ══════════════════════════════════════════════ */
+
+    function AutoReturn({ initialAzimuth = 0, initialPolar = Math.atan2(8, 3), easeSpeed = 0.06 }) {
+      const controls = useThree(state => state.controls);
+      const draggingRef = useRef(false);
+
+      useEffect(() => {
+        if (!controls) return;
+        const onStart = () => { draggingRef.current = true; };
+        const onEnd   = () => { draggingRef.current = false; };
+        controls.addEventListener('start', onStart);
+        controls.addEventListener('end',   onEnd);
+        return () => {
+          controls.removeEventListener('start', onStart);
+          controls.removeEventListener('end',   onEnd);
+        };
+      }, [controls]);
+
+      useFrame(() => {
+        if (!controls || draggingRef.current) return;
+        // Lerp only ANGLES (azimuth + polar) — keep distance constant so the
+        // camera doesn't dolly in/out along a straight-line path.
+        const curAz = controls.getAzimuthalAngle();
+        const curPo = controls.getPolarAngle();
+        const dAz = initialAzimuth - curAz;
+        const dPo = initialPolar   - curPo;
+        if (Math.abs(dAz) < 0.001 && Math.abs(dPo) < 0.001) return;
+        controls.setAzimuthalAngle(curAz + dAz * easeSpeed);
+        controls.setPolarAngle(    curPo + dPo * easeSpeed);
+        controls.update();
+      });
+      return null;
     }
 
     /* ══════════════════════════════════════════════
@@ -274,29 +443,33 @@
     }
 
     /* ══════════════════════════════════════════════
-       App — reference App.tsx stripped down （在这里改3d盒子）
+       App：页面和 3D 盒子的主要设置
        ══════════════════════════════════════════════ */
 
     function App() {
-      const rotationX      = 0.7;
-      const transmission   = 0.85;
-      const roughness      = 0.22;
-      const ior            = 1.0;
-      const glassColor     = '#ffffff';
-      const attenuationColor = '#e0f3ff';
-      const envMapIntensity  = 3.0;
-      const lightIntensity   = 1.5;
+      /* ===== 盒子玻璃设置：平时主要修改这里 ===== */
+      const rotationX        = 0.7;       // 盒子默认前倾角度；数值越大，俯视角度越明显
+      const transmission     = 0.85;      // 玻璃透明感：0 = 不透明，1 = 最通透
+      const roughness        = 0.22;      // 玻璃磨砂程度：0 = 光滑清晰，1 = 模糊磨砂
+      const ior              = 1.0;       // 折射率：常用约 1.0-2.5，越大折射变形越明显
+      const glassColor       = '#ffffff'; // 盒子玻璃的主体颜色
+      const attenuationColor = '#e0f3ff'; // 玻璃内部吸收颜色，会影响厚处和边缘色调
+      const envMapIntensity  = 4.0;       // 环境反射亮度：越大，高光和反射越明显
+      const lightIntensity   = 5.5;       // 场景灯光亮度：同时影响盒子的整体明暗
+      const rotateLeftRightLimit = Math.PI / 5.0; // 左右旋转限制：数值越小，左右可转动范围越小
+      const rotateUpLimit        = Math.PI / 9.5; // 往上旋转限制：数值越小，往上可转动范围越小
+      const rotateDownLimit      = Math.PI / 5.0; // 往下旋转限制：数值越小，往下可转动范围越小
+      const defaultPolarAngle    = Math.atan2(8, 3); // 上下旋转的默认中心角度，通常不用改
 
-      // 4 apples — each starts floating on the 2D page; snaps into a cell when dropped near the box
+      // 3 PNG apples — each starts floating on the page and can occupy any cell
       const [apples, setApples] = useState([
         { id: 0, state: 'floating', x: 60,  y: 120, cell: null },
         { id: 1, state: 'floating', x: 60,  y: 260, cell: null },
         { id: 2, state: 'floating', x: 60,  y: 400, cell: null },
-        { id: 3, state: 'floating', x: 60,  y: 540, cell: null },
       ]);
 
-      // BoxScreenTracker writes the box's on-screen center pixel into this ref every frame
-      const boxScreenRef = useRef({ x: 0, y: 0 });
+      // Reference-style screen bounds and quadrant center for the current box transform
+      const boxScreenRef = useRef(null);
       const groupRef     = useRef(null);
       const draggingIdRef = useRef(null);
       const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -316,25 +489,36 @@
         const ny = e.clientY - dragOffsetRef.current.y;
         setApples(prev => prev.map(a => a.id === id ? { ...a, x: nx, y: ny } : a));
       };
-      const onWindowUp = () => {
+      const onWindowUp = (e) => {
         const id = draggingIdRef.current;
         draggingIdRef.current = null;
         if (id == null) return;
         setApples(prev => {
           const apple = prev.find(a => a.id === id);
           if (!apple) return prev;
-          const bx = boxScreenRef.current.x, by = boxScreenRef.current.y;
-          const appleCenterX = apple.x + 55, appleCenterY = apple.y + 55;
-          const dist = Math.hypot(appleCenterX - bx, appleCenterY - by);
-          console.log('drop', { id, box: { bx, by }, apple: { cx: appleCenterX, cy: appleCenterY }, dist });
-          if (dist > 260) return prev;    // was 180 — widened
-          const takenCells = new Set(prev.filter(a => a.state === 'snapped').map(a => a.cell));
-          let target = null;
-          for (let c = 0; c < CELLS.length; c++) {
-            if (!takenCells.has(c)) { target = c; break; }
-          }
-          if (target === null) return prev;
-          return prev.map(a => a.id === id ? { ...a, state: 'snapped', cell: target } : a);
+          const box = boxScreenRef.current;
+          if (!box) return prev;
+
+          // motion/react's PanInfo uses the release pointer, not the dragged
+          // element center. Matching that detail makes edge drops feel precise.
+          const dropX = e.clientX;
+          const dropY = e.clientY;
+          const padding = 36;
+          if (
+            dropX < box.minX - padding || dropX > box.maxX + padding ||
+            dropY < box.minY - padding || dropY > box.maxY + padding
+          ) return prev;
+
+          const isRight = dropX > box.centerX;
+          const isBottom = dropY > box.centerY;
+          let compIdx = 0;
+          if (isRight && !isBottom) compIdx = 1;
+          if (!isRight && isBottom) compIdx = 2;
+          if (isRight && isBottom) compIdx = 3;
+          // Don't overwrite a taken cell
+          const taken = prev.some(a => a.state === 'snapped' && a.cell === compIdx && a.id !== id);
+          if (taken) return prev;
+          return prev.map(a => a.id === id ? { ...a, state: 'snapped', cell: compIdx } : a);
         });
       };
 
@@ -355,10 +539,10 @@
       };
 
       return (
-        <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#f8f9fa', position: 'relative' }}>
+        <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#F7F8FA', position: 'relative' }}>
           <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
             <ViewOffset shift={0.17} />
-            <color attach="background" args={['#f8f9fa']} />
+            <color attach="background" args={['#F7F8FA']} />
             <ambientLight intensity={lightIntensity * 0.25} />
             <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
             <spotLight position={[-10, 10, -10]} angle={0.3} penumbra={1} intensity={lightIntensity * 0.6} color="#e0eaff" />
@@ -374,20 +558,31 @@
                     envMapIntensity={envMapIntensity}
                   />
                   {apples.filter(a => a.state === 'snapped').map(a => (
-                    <group key={a.id} onClick={(e) => { e.stopPropagation(); unsnapApple(a.id); }}>
+                    <group key={a.id}>
                       <Apple3D appleId={a.id} cellIndex={a.cell} />
+                      <CloseButton3D
+                        position={[
+                          CELLS[a.cell].x + 0.56,
+                          CELLS[a.cell].y + 0.08,
+                          CELLS[a.cell].z - 0.32,
+                        ]}
+                        onRemove={() => unsnapApple(a.id)}
+                      />
                     </group>
                   ))}
                 </group>
               </Float>
-              <BoxScreenTracker groupRef={groupRef} posRef={boxScreenRef} />
+              <BoxScreenTracker groupRef={groupRef} screenRef={boxScreenRef} />
+              <AutoReturn easeSpeed={0.15} />
               <Environment preset="warehouse" />
             </Suspense>
             <OrbitControls
               enablePan={false}
-              enableZoom
-              minDistance={3}
-              maxDistance={15}
+              enableZoom={false}
+              minAzimuthAngle={-rotateLeftRightLimit}
+              maxAzimuthAngle={rotateLeftRightLimit}
+              minPolarAngle={defaultPolarAngle - rotateUpLimit}
+              maxPolarAngle={defaultPolarAngle + rotateDownLimit}
               target={[0, 0, 0]}
               makeDefault
             />

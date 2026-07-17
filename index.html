@@ -61,7 +61,7 @@
     const { useMemo, useState, useEffect, useRef, Suspense } = React;
     import { createRoot } from 'react-dom/client';
     import { Canvas, useThree, useFrame } from '@react-three/fiber';
-    import { Environment, OrbitControls, Float, MeshTransmissionMaterial } from '@react-three/drei';
+    import { Environment, OrbitControls, Html, MeshTransmissionMaterial } from '@react-three/drei';
     import { Geometry, Base, Subtraction, Addition } from '@react-three/csg';
     import { RoundedBoxGeometry } from 'three-stdlib';
     import * as THREE from 'three';
@@ -86,6 +86,14 @@
       { x: LEFT_X,  y: CELL_Y, z: FRONT_Z },  // 2: front-left
       { x: RIGHT_X, y: CELL_Y, z: FRONT_Z },  // 3: front-right
     ];
+    // 左右格子的内容中心修正：同时影响果切、水果信息和“入れ替え”文字。
+    const CELL_CONTENT_CENTER_SHIFT = 0.02;
+    const getCellContentCenterShift = (cellIndex) => (
+      CELLS[cellIndex].x < 0 ? -CELL_CONTENT_CENTER_SHIFT : CELL_CONTENT_CENTER_SHIFT
+    );
+    const CELL_HOVER_HIDE_DELAY = 220; // 移出格子后，白色 X 和水果信息延迟消失的毫秒数。
+    // 格子左上角水果信息文字的位置微调：x 越小越靠左，y 越大越靠上，z 越小越靠盒子后侧。
+    const CELL_INFO_LABEL_OFFSET = { x: -0.62, y: 0.080, z: -0.34 };
 
     const CUT_FRUIT_TEXTURE_SRCS = window.CUT_FRUIT_TEXTURE_SRCS;
     const cutFruit = (src) => CUT_FRUIT_TEXTURE_SRCS[src];
@@ -130,14 +138,203 @@
       return texture;
     }
 
+    /* ===== 果切放入格子的落下动画：整体手感可在这里调整 =====
+       dropHeight：初始高度；duration：单片落地和反弹总时长；stagger：每两片之间的错峰时间。 */
+    const FRUIT_DROP_ANIMATION = {
+      dropHeight: 0.48,
+      duration: 0.82,
+      stagger: 0.035,
+      appearDuration: 0.10, // 入场淡入时长：在正式下落前快速变为完全不透明。
+      exitDuration: 0.18,   // 替换旧水果时的淡出时长。
+    };
+
+    const seededUnit = (seed) => {
+      const value = Math.sin(seed * 12.9898) * 43758.5453;
+      return value - Math.floor(value);
+    };
+
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+    const easeOutBounce = (t) => {
+      const n1 = 7.5625;
+      const d1 = 2.75;
+      if (t < 1 / d1) return n1 * t * t;
+      if (t < 2 / d1) {
+        const shifted = t - 1.5 / d1;
+        return n1 * shifted * shifted + 0.75;
+      }
+      if (t < 2.5 / d1) {
+        const shifted = t - 2.25 / d1;
+        return n1 * shifted * shifted + 0.9375;
+      }
+      const shifted = t - 2.625 / d1;
+      return n1 * shifted * shifted + 0.984375;
+    };
+
+    function AnimatedFruitPiece({
+      targetPosition,
+      targetRotation,
+      planeSize,
+      texture,
+      layer,
+      pieceIndex,
+      cellIndex,
+      animationKey,
+      exiting = false,
+    }) {
+      const meshRef = useRef(null);
+      const materialRef = useRef(null);
+      const elapsedRef = useRef(0);
+      const exitElapsedRef = useRef(0);
+      const exitStartOpacityRef = useRef(1);
+      const finishedRef = useRef(false);
+      const motion = useMemo(() => {
+        const seed = (animationKey + 1) * 131 + (cellIndex + 1) * 47 + (pieceIndex + 1) * 19;
+        const side = pieceIndex % 2 === 0 ? -1 : 1;
+        return {
+          delay: FRUIT_DROP_ANIMATION.appearDuration + Math.floor(pieceIndex / 2) * FRUIT_DROP_ANIMATION.stagger + (pieceIndex % 2) * 0.016,
+          duration: FRUIT_DROP_ANIMATION.duration + seededUnit(seed + 1) * 0.12,
+          startOffset: [
+            (seededUnit(seed + 2) - 0.5) * 0.13,
+            FRUIT_DROP_ANIMATION.dropHeight + seededUnit(seed + 3) * 0.14,
+            0,
+          ],
+          startRotation: [
+            0,
+            0,
+            side * (0.14 + seededUnit(seed + 7) * 0.18),
+          ],
+        };
+      }, [animationKey, cellIndex, pieceIndex]);
+
+      useEffect(() => {
+        elapsedRef.current = 0;
+        finishedRef.current = false;
+        if (!meshRef.current) return;
+        if (materialRef.current) {
+          materialRef.current.transparent = true;
+          materialRef.current.opacity = 0;
+          materialRef.current.alphaTest = 0.02;
+          materialRef.current.needsUpdate = true;
+        }
+        meshRef.current.visible = false;
+        meshRef.current.position.set(...motion.startOffset);
+        meshRef.current.rotation.set(...motion.startRotation);
+      }, [animationKey, motion]);
+
+      useEffect(() => {
+        if (!exiting) return;
+        exitElapsedRef.current = 0;
+        exitStartOpacityRef.current = materialRef.current?.opacity ?? 1;
+      }, [exiting]);
+
+      useFrame((_, delta) => {
+        const mesh = meshRef.current;
+        const material = materialRef.current;
+        if (!mesh || !material) return;
+
+        if (exiting) {
+          exitElapsedRef.current += Math.min(delta, 0.05);
+          const exitProgress = THREE.MathUtils.clamp(
+            exitElapsedRef.current / FRUIT_DROP_ANIMATION.exitDuration,
+            0,
+            1,
+          );
+          if (!material.transparent) {
+            material.transparent = true;
+            material.needsUpdate = true;
+          }
+          if (material.alphaTest !== 0.02) {
+            material.alphaTest = 0.02;
+            material.needsUpdate = true;
+          }
+          material.opacity = exitStartOpacityRef.current * (1 - easeOutCubic(exitProgress));
+          mesh.visible = exitProgress < 1;
+          return;
+        }
+
+        if (finishedRef.current) return;
+        elapsedRef.current += Math.min(delta, 0.05);
+        const fadeStart = Math.max(0, motion.delay - FRUIT_DROP_ANIMATION.appearDuration);
+        if (elapsedRef.current < fadeStart) {
+          mesh.visible = false;
+          return;
+        }
+
+        mesh.visible = true;
+        const appearProgress = THREE.MathUtils.clamp(
+          (elapsedRef.current - fadeStart) / FRUIT_DROP_ANIMATION.appearDuration,
+          0,
+          1,
+        );
+        material.opacity = easeOutCubic(appearProgress);
+        const shouldBeTransparent = appearProgress < 0.999;
+        const nextAlphaTest = shouldBeTransparent ? 0.02 : 0.5;
+        if (material.alphaTest !== nextAlphaTest) {
+          material.alphaTest = nextAlphaTest;
+          material.needsUpdate = true;
+        }
+        if (material.transparent !== shouldBeTransparent) {
+          material.transparent = shouldBeTransparent;
+          material.needsUpdate = true;
+        }
+        if (elapsedRef.current < motion.delay) return;
+
+        const t = THREE.MathUtils.clamp((elapsedRef.current - motion.delay) / motion.duration, 0, 1);
+        const settle = easeOutCubic(t);
+        const bounce = easeOutBounce(t);
+        mesh.position.set(
+          THREE.MathUtils.lerp(motion.startOffset[0], 0, settle),
+          THREE.MathUtils.lerp(motion.startOffset[1], 0, bounce),
+          0,
+        );
+        mesh.rotation.set(
+          0,
+          0,
+          THREE.MathUtils.lerp(motion.startRotation[2], 0, settle),
+        );
+
+        if (t >= 1) {
+          mesh.position.set(0, 0, 0);
+          mesh.rotation.set(0, 0, 0);
+          finishedRef.current = true;
+        }
+      });
+
+      return (
+        <group position={targetPosition} rotation={targetRotation}>
+          <mesh
+            ref={meshRef}
+            position={motion.startOffset}
+            rotation={motion.startRotation}
+            visible={false}
+            renderOrder={20 + layer}
+          >
+            <planeGeometry args={[planeSize, planeSize]} />
+            {/* 父组固定最终层级，切片只在自身平面内运动；真实深度负责横杆和玻璃遮挡。 */}
+            <meshBasicMaterial
+              ref={materialRef}
+              map={texture}
+              transparent
+              opacity={0}
+              alphaTest={0.02}
+              depthTest
+              depthWrite
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      );
+    }
+
     /* 每片水果都是独立的无光照平面，并继承盒子的旋转。
        固定绘制顺序只控制水果之间的遮挡，不影响盒子对水果的遮挡。 */
-    function Apple3D({ appleId, cellIndex }) {
+    function Apple3D({ appleId, cellIndex, animationKey = 0, exiting = false }) {
       const cell = CELLS[cellIndex];
       const fruit = FRUIT_ITEMS[appleId];
       const texture = useAppleTexture(fruit.cutSrc);
       // 左侧格子整体向左校正，右侧格子整体向右校正，让内容在各自格子中居中。
-      const cellCenterShift = cell.x < 0 ? -0.04 : 0.04;
+      const cellCenterShift = getCellContentCenterShift(cellIndex);
 
       const defaultStyle = {
         planeTilt: -1.05,
@@ -166,7 +363,7 @@
         columns: [-0.34, -0.18, 0.08, 0.24],
         rotations: [-0.045, -0.018, 0.018, 0.045, -0.04, -0.012, 0.02, 0.05],
         rows: [
-          { y: -0.02, z: -0.17, xShift: 0.00 },
+          { y: -0.02, z: -0.14, xShift: 0.00 },
           { y: 0.10, z: 0.18, xShift: 0.09 },
         ],
       };
@@ -206,7 +403,7 @@
         columns: [-0.30, 0.00, 0.30],
         rotations: [-0.04, 0.00, 0.04, -0.03, 0.01, 0.05],
         rows: [
-          { y: -0.07, z: -0.10, xShift: -0.02 },
+          { y: -0.07, z: -0.07, xShift: -0.02 },
           { y: 0.05, z: 0.12, xShift: 0.04 },
         ],
       };
@@ -248,38 +445,65 @@
       return (
         <group>
           {pieces.map((piece, index) => (
-            <mesh
+            <AnimatedFruitPiece
               key={index}
-              position={[
+              targetPosition={[
                 cell.x + cellCenterShift + piece.x,
                 cell.y - 0.08 + piece.y,
                 cell.z + piece.z,
               ]}
-              rotation={[piece.planeTilt ?? style.planeTilt, 0, piece.rotation]}
-              renderOrder={20 + piece.layer}
-            >
-              <planeGeometry args={[style.planeSize, style.planeSize]} />
-              <meshBasicMaterial
-                map={texture}
-                transparent={false}
-                alphaTest={0.5}
-                depthTest
-                depthWrite
-                polygonOffset
-                polygonOffsetFactor={-(piece.layer + 1) * 2}
-                polygonOffsetUnits={-(piece.layer + 1) * 8}
-                side={THREE.DoubleSide}
-                toneMapped={false}
-              />
-            </mesh>
+              targetRotation={[piece.planeTilt ?? style.planeTilt, 0, piece.rotation]}
+              planeSize={style.planeSize}
+              texture={texture}
+              layer={piece.layer}
+              pieceIndex={index}
+              cellIndex={cellIndex}
+              animationKey={animationKey}
+              exiting={exiting}
+            />
           ))}
         </group>
       );
     }
 
-    /* A camera-facing 3D control: visually flat like HTML, but participates in
-       WebGL depth and transmission so the compartment can pass in front of it. */
-    function CloseButton3D({ position, onRemove }) {
+    /* 格子内容替换时保留旧水果完成淡出，再切换并播放新水果的落下动画。 */
+    function FruitSlot3D({ appleId, cellIndex, animationKey }) {
+      const [displayedFruit, setDisplayedFruit] = useState({ appleId, animationKey });
+      const [exiting, setExiting] = useState(false);
+
+      useEffect(() => {
+        if (
+          displayedFruit.appleId === appleId &&
+          displayedFruit.animationKey === animationKey
+        ) {
+          setExiting(false);
+          return undefined;
+        }
+
+        setExiting(true);
+        const timer = setTimeout(() => {
+          setDisplayedFruit({ appleId, animationKey });
+          setExiting(false);
+        }, FRUIT_DROP_ANIMATION.exitDuration * 1000);
+        return () => clearTimeout(timer);
+      }, [appleId, animationKey, displayedFruit.appleId, displayedFruit.animationKey]);
+
+      return (
+        <Apple3D
+          appleId={displayedFruit.appleId}
+          cellIndex={cellIndex}
+          animationKey={displayedFruit.animationKey}
+          exiting={exiting}
+        />
+      );
+    }
+
+    /* 正对镜头的 3D 圆形按钮：仍参与 WebGL 深度遮挡，但不受场景光影影响。 */
+    function RoundButton3D({ position, onClick, background = '#ffffff', color = '#111111', scale = 0.14, visible = true }) {
+      const spriteRef = useRef(null);
+      const progressRef = useRef(0);
+      const hideTimerRef = useRef(null);
+      const [delayedVisible, setDelayedVisible] = useState(false);
       const texture = useMemo(() => {
         const canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -287,16 +511,12 @@
         const ctx = canvas.getContext('2d');
 
         ctx.clearRect(0, 0, 256, 256);
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.16)';
-        ctx.shadowBlur = 14;
-        ctx.shadowOffsetY = 5;
         ctx.beginPath();
         ctx.arc(128, 128, 80, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = background;
         ctx.fill();
 
-        ctx.shadowColor = 'transparent';
-        ctx.strokeStyle = '#111111';
+        ctx.strokeStyle = color;
         ctx.lineWidth = 14;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -308,36 +528,328 @@
 
         const map = new THREE.CanvasTexture(canvas);
         map.colorSpace = THREE.SRGBColorSpace;
+        map.premultiplyAlpha = true;
         map.minFilter = THREE.LinearFilter;
         map.magFilter = THREE.LinearFilter;
         map.generateMipmaps = false;
         map.needsUpdate = true;
         return map;
-      }, []);
+      }, [background, color]);
 
       useEffect(() => () => texture.dispose(), [texture]);
 
+      useEffect(() => {
+        if (hideTimerRef.current) {
+          clearTimeout(hideTimerRef.current);
+          hideTimerRef.current = null;
+        }
+        if (visible) {
+          setDelayedVisible(true);
+          return undefined;
+        }
+        hideTimerRef.current = setTimeout(() => {
+          setDelayedVisible(false);
+          hideTimerRef.current = null;
+        }, CELL_HOVER_HIDE_DELAY);
+        return () => {
+          if (hideTimerRef.current) {
+            clearTimeout(hideTimerRef.current);
+            hideTimerRef.current = null;
+          }
+        };
+      }, [visible]);
+
+      useFrame((_, delta) => {
+        const target = delayedVisible ? 1 : 0;
+        const next = THREE.MathUtils.damp(progressRef.current, target, 10, delta);
+        progressRef.current = Math.abs(next - target) < 0.003 ? target : next;
+        const progress = progressRef.current;
+        if (spriteRef.current) {
+          spriteRef.current.visible = delayedVisible || progress > 0.01;
+          const currentScale = Math.max(0.001, scale * progress);
+          spriteRef.current.scale.set(currentScale, currentScale, 1);
+        }
+      });
+
       return (
         <sprite
+          ref={spriteRef}
           position={position}
-          scale={[0.14, 0.14, 1]}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          scale={[0.001, 0.001, 1]}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (delayedVisible) onClick();
+          }}
           onPointerOver={(e) => {
             e.stopPropagation();
+            if (!delayedVisible) return;
             document.body.style.cursor = 'pointer';
           }}
           onPointerOut={() => { document.body.style.cursor = 'default'; }}
         >
           <spriteMaterial
             map={texture}
-            transparent={false}
-            alphaTest={0.1}
+            transparent
+            premultipliedAlpha
+            alphaTest={0.35}
             depthTest
             depthWrite
             toneMapped={false}
           />
         </sprite>
       );
+    }
+
+    function CloseButton3D({ position, onRemove, visible }) {
+      return <RoundButton3D position={position} onClick={onRemove} scale={0.15} visible={visible} />;
+    }
+
+    /* 保留 HTML 的清晰度和点击稳定性，但让内容旋转角度跟随盒子局部横轴。 */
+    function ModelAlignedHtml({ position, center = false, transformOrigin = 'center center', style, children }) {
+      const anchorRef = useRef(null);
+      const contentRef = useRef(null);
+      const origin = useMemo(() => new THREE.Vector3(), []);
+      const right = useMemo(() => new THREE.Vector3(), []);
+      const lastAngleRef = useRef(null);
+
+      useFrame(({ camera, size }) => {
+        if (!anchorRef.current || !contentRef.current) return;
+        anchorRef.current.updateWorldMatrix(true, false);
+        origin.set(0, 0, 0).applyMatrix4(anchorRef.current.matrixWorld).project(camera);
+        right.set(1, 0, 0).applyMatrix4(anchorRef.current.matrixWorld).project(camera);
+        const dx = (right.x - origin.x) * size.width * 0.5;
+        const dy = -(right.y - origin.y) * size.height * 0.5;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (lastAngleRef.current == null || Math.abs(angle - lastAngleRef.current) > 0.001) {
+          contentRef.current.style.transform = `rotate(${angle}deg)`;
+          lastAngleRef.current = angle;
+        }
+      });
+
+      return (
+        <group ref={anchorRef} position={position}>
+          <Html center={center} style={style}>
+            <div ref={contentRef} style={{ transformOrigin }}>
+              {children}
+            </div>
+          </Html>
+        </group>
+      );
+    }
+
+    function CellInfoLabel3D({ position, appleId, visible }) {
+      const fruit = FRUIT_ITEMS[appleId];
+      const hideTimerRef = useRef(null);
+      const [delayedVisible, setDelayedVisible] = useState(false);
+
+      useEffect(() => {
+        if (hideTimerRef.current) {
+          clearTimeout(hideTimerRef.current);
+          hideTimerRef.current = null;
+        }
+        if (visible) {
+          setDelayedVisible(true);
+          return undefined;
+        }
+        hideTimerRef.current = setTimeout(() => {
+          setDelayedVisible(false);
+          hideTimerRef.current = null;
+        }, CELL_HOVER_HIDE_DELAY);
+        return () => {
+          if (hideTimerRef.current) {
+            clearTimeout(hideTimerRef.current);
+            hideTimerRef.current = null;
+          }
+        };
+      }, [visible]);
+
+      return (
+        <ModelAlignedHtml
+          position={position}
+          transformOrigin="left center"
+          style={{ pointerEvents: 'none' }}
+        >
+          <div
+            style={{
+              opacity: delayedVisible ? 1 : 0,
+              transition: 'opacity 160ms ease',
+              color: '#111111',
+              font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+              letterSpacing: 0,
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+            }}
+          >
+            {fruit.name} 200g
+          </div>
+        </ModelAlignedHtml>
+      );
+    }
+
+    /* 替换模式按钮：跟随盒子的 3D 坐标，但用 HTML 绘制，不受水果、光影或玻璃折射影响。 */
+    function ReplaceButton3D({ position, onReplace, visible, animationKey }) {
+      const [shown, setShown] = useState(false);
+      const [exiting, setExiting] = useState(false);
+      const frameRef = useRef(null);
+      const timerRef = useRef(null);
+
+      useEffect(() => {
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setExiting(false);
+        if (!visible) {
+          setShown(false);
+          return undefined;
+        }
+        setShown(false);
+        frameRef.current = requestAnimationFrame(() => {
+          frameRef.current = requestAnimationFrame(() => setShown(true));
+        });
+        return () => {
+          if (frameRef.current) cancelAnimationFrame(frameRef.current);
+          if (timerRef.current) clearTimeout(timerRef.current);
+        };
+      }, [visible, animationKey]);
+
+      const active = visible && shown && !exiting;
+
+      return (
+        <ModelAlignedHtml
+          position={position}
+          center
+          style={{ pointerEvents: 'none' }}
+        >
+          <div
+            style={{
+              transform: active ? 'scale(1)' : 'scale(0.001)',
+              transition: 'transform 180ms cubic-bezier(.2,.85,.2,1.08)',
+              transformOrigin: 'center center',
+              pointerEvents: active ? 'auto' : 'none',
+            }}
+          >
+            <button
+              type="button"
+              aria-label="この果物と入れ替え"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!active) return;
+                setExiting(true);
+                timerRef.current = setTimeout(onReplace, 130);
+              }}
+              style={{
+                width: 78,
+                height: 28,
+                padding: 0,
+                border: 0,
+                borderRadius: 999,
+                background: '#111111',
+                color: '#ffffff',
+                boxShadow: 'none',
+                display: 'grid',
+                placeItems: 'center',
+                font: '500 12px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+                letterSpacing: 0,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                pointerEvents: 'auto',
+              }}
+            >
+              入れ替え
+            </button>
+          </div>
+        </ModelAlignedHtml>
+      );
+    }
+
+    /* 替换模式共用一个取消按钮；纯 HTML 绘制可彻底避免玻璃产生彩色拖影。 */
+    function CancelReplacementButton3D({ position, onCancel, visible }) {
+      return (
+        <Html position={position} center style={{ pointerEvents: 'none' }}>
+          <div
+            style={{
+              transform: visible ? 'scale(1)' : 'scale(0.001)',
+              transition: 'transform 220ms cubic-bezier(.2,.85,.2,1.12)',
+              transformOrigin: 'center center',
+              pointerEvents: visible ? 'auto' : 'none',
+            }}
+          >
+            <button
+              type="button"
+              aria-label="入れ替えをキャンセル"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (visible) onCancel();
+              }}
+              style={{
+                width: 20,
+                height: 20,
+                padding: 0,
+                border: 0,
+                borderRadius: '50%',
+                background: '#111111',
+                color: '#ffffff',
+                boxShadow: 'none',
+                display: 'grid',
+                placeItems: 'center',
+                letterSpacing: 0,
+                cursor: 'pointer',
+                pointerEvents: 'auto',
+              }}
+            >
+              <span style={{ position: 'relative', width: 9, height: 9, display: 'block' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 3.8,
+                    top: 0,
+                    width: 1.4,
+                    height: 9,
+                    borderRadius: 999,
+                    background: '#ffffff',
+                    transform: 'rotate(45deg)',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 3.8,
+                    top: 0,
+                    width: 1.4,
+                    height: 9,
+                    borderRadius: 999,
+                    background: '#ffffff',
+                    transform: 'rotate(-45deg)',
+                  }}
+                />
+              </span>
+            </button>
+          </div>
+        </Html>
+      );
+    }
+
+    /* 四个透明平面只负责判断鼠标正悬浮在哪个小格子，不参与画面绘制。 */
+    function CellHoverTargets({ onHoverCell }) {
+      return CELLS.map((cell, cellIndex) => (
+        <mesh
+          key={cellIndex}
+          position={[cell.x, BOX_H / 2 + 0.08, cell.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          onPointerMove={() => onHoverCell(cellIndex)}
+          onPointerOut={() => onHoverCell(null)}
+        >
+          <planeGeometry args={[HOLE_W * 0.94, HOLE_D * 0.94]} />
+          <meshBasicMaterial
+            transparent
+            opacity={0}
+            colorWrite={false}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ));
     }
 
     /* Keep the reference app's screen-quadrant drop model, but derive its bounds
@@ -573,6 +1085,10 @@
 
       const [placedFruits, setPlacedFruits] = useState([]);
       const [dragClone, setDragClone] = useState(null);
+      const [hoveredCell, setHoveredCell] = useState(null);
+      const [modelDragging, setModelDragging] = useState(false);
+      const [replacementFruitId, setReplacementFruitId] = useState(null);
+      const [replacementMotionKey, setReplacementMotionKey] = useState(0);
       const fruitSlotWidth = 126; // 顶部水果栏单格间距：水果宽 92 + 空隙 34；也用于计算滚动位置。
       const getFruitSlots = () => Math.max(3, Math.min(FRUITS_PER_PAGE, Math.floor((window.innerWidth - 180) / 126)));
       const [fruitSlots, setFruitSlots] = useState(getFruitSlots);
@@ -600,6 +1116,7 @@
       const boxScreenRef = useRef(null);
       const groupRef     = useRef(null);
       const nextPlacedIdRef = useRef(0);
+      const nextPlacementMotionRef = useRef(0);
       const draggingAppleIdRef = useRef(null);
       const dragOffsetRef = useRef({ x: 0, y: 0 });
       const dragStartRef = useRef({ x: 0, y: 0 });
@@ -613,10 +1130,14 @@
       fruitOffsetRef.current = fruitOffset;
       maxFruitOffsetRef.current = maxFruitOffset;
 
-      const placeAppleInCell = (prev, appleId, cell) => [
-        ...prev.filter(a => a.cell !== cell),
-        { id: nextPlacedIdRef.current++, appleId, cell },
-      ];
+      const placeAppleInCell = (prev, appleId, cell) => {
+        const motionKey = nextPlacementMotionRef.current++;
+        const existingIndex = prev.findIndex(a => a.cell === cell);
+        if (existingIndex >= 0) {
+          return prev.map(a => a.cell === cell ? { ...a, appleId, motionKey } : a);
+        }
+        return [...prev, { id: nextPlacedIdRef.current++, appleId, cell, motionKey }];
+      };
 
       const beginFruitStripDrag = (startX, startOffset, timeStamp) => {
         fruitStripDragRef.current = { active: true, startX, startOffset };
@@ -732,6 +1253,7 @@
           }
 
           draggingAppleIdRef.current = pendingGesture.appleId;
+          setReplacementFruitId(null);
           dragOffsetRef.current = {
             x: pendingGesture.startX - pendingGesture.rect.left,
             y: pendingGesture.startY - pendingGesture.rect.top,
@@ -802,9 +1324,16 @@
           didDragRef.current = false;
           return;
         }
+        const firstEmptyCell = [0, 1, 2, 3].find(cell => !placedFruits.some(a => a.cell === cell));
+        if (firstEmptyCell == null) {
+          setReplacementFruitId(appleId);
+          setReplacementMotionKey(key => key + 1);
+          setHoveredCell(null);
+          return;
+        }
         setPlacedFruits(prev => {
-          const firstEmptyCell = [0, 1, 2, 3].find(cell => !prev.some(a => a.cell === cell));
-          return firstEmptyCell == null ? prev : placeAppleInCell(prev, appleId, firstEmptyCell);
+          const nextEmptyCell = [0, 1, 2, 3].find(cell => !prev.some(a => a.cell === cell));
+          return nextEmptyCell == null ? prev : placeAppleInCell(prev, appleId, nextEmptyCell);
         });
       };
 
@@ -831,6 +1360,20 @@
 
       const unsnapApple = (id) => {
         setPlacedFruits(prev => prev.filter(a => a.id !== id));
+        setReplacementFruitId(null);
+        setHoveredCell(null);
+      };
+
+      const replaceFruitInCell = (cell) => {
+        if (replacementFruitId == null) return;
+        setPlacedFruits(prev => placeAppleInCell(prev, replacementFruitId, cell));
+        setReplacementFruitId(null);
+        setHoveredCell(null);
+      };
+
+      const cancelReplacement = () => {
+        setReplacementFruitId(null);
+        setHoveredCell(null);
       };
 
       const turnFruitPage = (direction) => {
@@ -863,8 +1406,8 @@
             <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
             <spotLight position={[-10, 10, -10]} angle={0.3} penumbra={1} intensity={lightIntensity * 0.6} color="#e0eaff" />
             <Suspense fallback={null}>
-              <Float speed={2} rotationIntensity={0} floatIntensity={0.5}>
-                <group ref={groupRef} rotation={[rotationX, 0, 0]} scale={1.55}>
+              {/* HTML 文字需要稳定的像素位置：盒子不再自动上下漂浮，手动旋转保持不变。 */}
+              <group ref={groupRef} rotation={[rotationX, 0, 0]} scale={1.55}>
                   <GlassCube
                     transmission={transmission}
                     roughness={roughness}
@@ -873,21 +1416,46 @@
                     attenuationColor={attenuationColor}
                     envMapIntensity={envMapIntensity}
                   />
+                  <CellHoverTargets onHoverCell={setHoveredCell} />
                   {placedFruits.map(a => (
                     <group key={a.id}>
-                      <Apple3D appleId={a.appleId} cellIndex={a.cell} />
+                      <FruitSlot3D appleId={a.appleId} cellIndex={a.cell} animationKey={a.motionKey} />
+                      <CellInfoLabel3D
+                        position={[
+                          CELLS[a.cell].x + getCellContentCenterShift(a.cell) + CELL_INFO_LABEL_OFFSET.x,
+                          CELLS[a.cell].y + CELL_INFO_LABEL_OFFSET.y,
+                          CELLS[a.cell].z + CELL_INFO_LABEL_OFFSET.z,
+                        ]}
+                        appleId={a.appleId}
+                        visible={replacementFruitId == null && !modelDragging && hoveredCell === a.cell}
+                      />
                       <CloseButton3D
                         position={[
                           CELLS[a.cell].x + 0.56,
                           CELLS[a.cell].y + 0.08,
                           CELLS[a.cell].z - 0.32,
                         ]}
+                        visible={replacementFruitId == null && !modelDragging && hoveredCell === a.cell}
                         onRemove={() => unsnapApple(a.id)}
+                      />
+                      <ReplaceButton3D
+                        position={[
+                          CELLS[a.cell].x + getCellContentCenterShift(a.cell),
+                          CELLS[a.cell].y + 0.10,
+                          CELLS[a.cell].z - 0.02,
+                        ]}
+                        visible={replacementFruitId != null}
+                        animationKey={replacementMotionKey}
+                        onReplace={() => replaceFruitInCell(a.cell)}
                       />
                     </group>
                   ))}
-                </group>
-              </Float>
+                  <CancelReplacementButton3D
+                    position={[RIGHT_X + 0.56, CELL_Y + 0.08, BACK_Z - 0.32]}
+                    visible={replacementFruitId != null}
+                    onCancel={cancelReplacement}
+                  />
+              </group>
               <BoxScreenTracker groupRef={groupRef} screenRef={boxScreenRef} />
               <AutoReturn easeSpeed={0.15} />
               <Environment preset="warehouse" />
@@ -895,6 +1463,11 @@
             <OrbitControls
               enablePan={false}
               enableZoom={false}
+              onStart={() => setModelDragging(true)}
+              onEnd={() => {
+                setModelDragging(false);
+                setHoveredCell(null);
+              }}
               minAzimuthAngle={-rotateLeftRightLimit}
               maxAzimuthAngle={rotateLeftRightLimit}
               minPolarAngle={defaultPolarAngle - rotateUpLimit}
@@ -1083,7 +1656,7 @@
                     width: scrollbarThumbWidth,
                     height: '100%',
                     borderRadius: 999,
-                    background: 'rgba(0, 0, 0, 0.28)',
+                    background: '#D2DBE4',
                     transform: `translateX(${scrollbarThumbX}px)`,
                     transition: fruitStripDragging ? 'none' : 'transform 220ms ease',
                   }}

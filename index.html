@@ -169,6 +169,11 @@
     const PAGE_CART_TEXT_STYLE = { fontSize: 32, textOffsetY: 2 };
     // 右下角购物车数量位置和大小：right 越小越靠右，top 越小越靠上。
     const PAGE_CART_COUNT_STYLE = { fontSize: 26, right: -21, top: -15 };
+    // 右侧购物车栏：width 是侧栏宽度；打开时中间 3D 盒子和三个分类按钮会按这个宽度的一半往左移。
+    const CART_DRAWER_WIDTH = 360;
+    const CART_LAYOUT_DURATION_MS = 420;
+    const TOP_CATALOG_SIDE_GAP = 28; // 顶部水果列表左右留白：数值越大，两边离屏幕/购物车栏越远。
+    const TOP_CATALOG_ARROW_GAP = 12; // 翻页箭头与首尾水果之间的空隙。
     // 左下角尺寸选择：点击会按这里的顺序切换。
     const SIZE_OPTIONS = [
       // boxWidth / boxDepth 是真实改盒子的长宽；盒子高度、壁厚、圆角、十字分隔厚度不跟着缩放。
@@ -270,7 +275,7 @@
 	      }),
 	    }));
     // 顶部三段分类按钮位置和大小：top 越大越靠下，width/height 控制胶囊整体尺寸。
-    const CATALOG_SWITCH_STYLE = { top: 236, width: 300, height: 26, fontSize: 11 };
+    const CATALOG_SWITCH_STYLE = { top: 140, width: 300, height: 26, fontSize: 11 };
 
     // 水果旋转隐藏后还会再次出现，因此保留已解码纹理，避免重新挂载时异步解码造成单帧闪烁。
     const FRUIT_TEXTURE_CACHE = new Map();
@@ -1207,7 +1212,7 @@
               pointerEvents: active ? 'auto' : 'none',
             }}
           >
-            <button
+	              <button
               type="button"
               aria-label="この果物と入れ替え"
               onPointerDown={(e) => e.stopPropagation()}
@@ -1739,20 +1744,20 @@
        frame. Rotation still pivots around the box itself.
        ══════════════════════════════════════════════ */
 
-    function ViewOffset({ shift = 0.2 }) {
+    function ViewOffset({ shift = 0.2, shiftX = 0 }) {
       const { camera, size } = useThree();
       useEffect(() => {
         if (typeof camera.setViewOffset !== 'function') return;
         camera.setViewOffset(
           size.width,
           size.height * (1 + shift),
-          0,
+          shiftX,
           -size.height * shift,
           size.width,
           size.height,
         );
         return () => camera.clearViewOffset();
-      }, [camera, size.width, size.height, shift]);
+      }, [camera, size.width, size.height, shift, shiftX]);
       return null;
     }
 
@@ -1794,9 +1799,16 @@
 	      const [openComboIndex, setOpenComboIndex] = useState(null);
 	      const [comboReplacePrompt, setComboReplacePrompt] = useState(null);
 	      const [comboReplacePromptSeen, setComboReplacePromptSeen] = useState(false);
+	      const [cartOpen, setCartOpen] = useState(false);
+	      const [cartLayoutProgress, setCartLayoutProgress] = useState(0);
       const selectedSize = SIZE_OPTIONS[selectedSizeIndex];
       const requestedSize = SIZE_OPTIONS[requestedSizeIndex];
       const sizeTransitionActive = isSizeSpinning || isSizeShaking;
+      // 购物车侧栏打开时：盒子和“单品/人气セット/履歴”整体往左让位。数值越小，盒子越靠右。
+      const cartContentOffset = CART_DRAWER_WIDTH * 0.28 * cartLayoutProgress;
+      const cartDrawerViewportOffset = CART_DRAWER_WIDTH * cartLayoutProgress;
+      // 分类按钮位于已经缩窄的顶部列表容器内，需要补回父容器缩窄的一半，再跟随盒子的偏移量。
+      const catalogSwitchOffset = cartDrawerViewportOffset / 2 - cartContentOffset;
       const selectedBoxLayout = useMemo(
         () => createBoxLayout(selectedSize.boxWidth, selectedSize.boxDepth),
         [selectedSize.boxWidth, selectedSize.boxDepth]
@@ -1808,7 +1820,13 @@
       const activeCatalogItems = isFruitCatalog ? FRUIT_ITEMS : TEST_BOX_ITEMS;
       const activeCatalogCount = activeCatalogItems.length;
       const fruitSlotWidth = 126; // 顶部水果栏单格间距：水果宽 92 + 空隙 34；也用于计算滚动位置。
-      const getFruitSlots = () => Math.max(3, Math.min(FRUITS_PER_PAGE, Math.floor((window.innerWidth - 180) / 126)));
+      const getFruitSlots = () => {
+        const targetDrawerWidth = cartOpen ? CART_DRAWER_WIDTH : 0;
+        // 顶部列表可显示数量：按当前真正可见区域计算。108 = 左右箭头 30*2 + 两侧 gap 24*2。
+        const visibleCatalogWidth = Math.min(1580, window.innerWidth - targetDrawerWidth - TOP_CATALOG_SIDE_GAP * 2);
+        const availableFruitWidth = Math.max(0, visibleCatalogWidth - 108);
+        return Math.max(3, Math.min(FRUITS_PER_PAGE, Math.floor((availableFruitWidth + 34) / fruitSlotWidth)));
+      };
       const [fruitSlots, setFruitSlots] = useState(getFruitSlots);
       const [fruitOffset, setFruitOffset] = useState(0);
       const [fruitDragDelta, setFruitDragDelta] = useState(0);
@@ -1816,7 +1834,12 @@
       const [fruitSnapDuration, setFruitSnapDuration] = useState(420);
       const [fruitEdgePull, setFruitEdgePull] = useState({ left: 0, right: 0 });
       const maxFruitOffset = Math.max(0, activeCatalogCount - fruitSlots);
-	      const fruitViewportWidth = fruitSlots * fruitSlotWidth - 34;
+      // 顶部列表视觉宽度：跟购物车侧栏动画进度连续变化，避免 fruitSlots 变更时先闪一下。
+      const animatedCatalogWidth = Math.min(1580, window.innerWidth - cartDrawerViewportOffset - TOP_CATALOG_SIDE_GAP * 2);
+      const fruitViewportWidth = Math.max(
+        3 * fruitSlotWidth - 34,
+        Math.min(FRUITS_PER_PAGE * fruitSlotWidth - 34, animatedCatalogWidth - 108)
+      );
 	      const fruitStripTranslate = -fruitOffset * fruitSlotWidth + fruitDragDelta;
 	      const comboHoverPanelWidth = 154;
 	      const comboHoverPanelLeft = openComboIndex == null
@@ -1851,17 +1874,21 @@
       const fruitOffsetRef = useRef(fruitOffset);
       const maxFruitOffsetRef = useRef(maxFruitOffset);
       const pendingAppleGestureRef = useRef(null);
+      const pendingComboGestureRef = useRef(null);
       const requestedSizeIndexRef = useRef(requestedSizeIndex);
       const selectedSizeIndexRef = useRef(selectedSizeIndex);
       const displayedScreenShiftRef = useRef(displayedScreenShift);
       const sizeSpinRunRef = useRef({ running: false, rafId: 0 });
       const sizeShakeRunRef = useRef({ running: false, rafId: 0 });
       const sizeSpinFruitTimersRef = useRef([]);
+      const cartLayoutRafRef = useRef(0);
+      const cartLayoutProgressRef = useRef(cartLayoutProgress);
       fruitOffsetRef.current = fruitOffset;
       maxFruitOffsetRef.current = maxFruitOffset;
       requestedSizeIndexRef.current = requestedSizeIndex;
       selectedSizeIndexRef.current = selectedSizeIndex;
       displayedScreenShiftRef.current = displayedScreenShift;
+      cartLayoutProgressRef.current = cartLayoutProgress;
 
       const placeAppleInCell = (prev, appleId, cell) => {
         const motionKey = nextPlacementMotionRef.current++;
@@ -1969,7 +1996,42 @@
         e.currentTarget.setPointerCapture(e.pointerId);
         e.stopPropagation();
       };
+
+      // 组合盒图片只负责横向滚动：短按仍然打开详情，移动后复用水果栏的惯性拖动。
+      const onComboPointerDown = (e, comboIndex) => {
+        pendingComboGestureRef.current = {
+          active: true,
+          comboIndex,
+          startX: e.clientX,
+          startY: e.clientY,
+          startOffset: fruitOffsetRef.current,
+          startTime: e.timeStamp || performance.now(),
+        };
+        didDragRef.current = false;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        e.stopPropagation();
+      };
+
       const onWindowMove = (e) => {
+        const pendingComboGesture = pendingComboGestureRef.current;
+        if (pendingComboGesture?.active) {
+          const dx = e.clientX - pendingComboGesture.startX;
+          const dy = e.clientY - pendingComboGesture.startY;
+          if (Math.hypot(dx, dy) < 6) return;
+
+          didDragRef.current = true;
+          pendingComboGestureRef.current = null;
+          setOpenComboIndex(null);
+          setComboReplacePrompt(null);
+          beginFruitStripDrag(
+            pendingComboGesture.startX,
+            pendingComboGesture.startOffset,
+            pendingComboGesture.startTime
+          );
+          updateFruitStripDrag(e);
+          return;
+        }
+
         const pendingGesture = pendingAppleGestureRef.current;
         if (pendingGesture?.active) {
           const dx = e.clientX - pendingGesture.startX;
@@ -2014,6 +2076,10 @@
         setDragClone(prev => prev ? { ...prev, x: nx, y: ny } : prev);
       };
       const onWindowUp = (e) => {
+        if (pendingComboGestureRef.current?.active) {
+          pendingComboGestureRef.current = null;
+        }
+
         if (pendingAppleGestureRef.current?.active) {
           pendingAppleGestureRef.current = null;
         }
@@ -2123,9 +2189,38 @@
 
       useEffect(() => {
         const onResize = () => setFruitSlots(getFruitSlots());
+        onResize();
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
-      }, []);
+      }, [cartOpen]);
+
+      useEffect(() => {
+        cancelAnimationFrame(cartLayoutRafRef.current);
+
+        const from = cartLayoutProgressRef.current;
+        const to = cartOpen ? 1 : 0;
+        if (Math.abs(from - to) < 0.001) {
+          setCartLayoutProgress(to);
+          return undefined;
+        }
+
+        const startedAt = performance.now();
+        const easeLayout = (t) => 1 - Math.pow(1 - t, 3);
+        const tick = (now) => {
+          const t = Math.min(1, (now - startedAt) / CART_LAYOUT_DURATION_MS);
+          const eased = easeLayout(t);
+          const next = from + (to - from) * eased;
+          setCartLayoutProgress(next);
+          if (t < 1) {
+            cartLayoutRafRef.current = requestAnimationFrame(tick);
+          } else {
+            setCartLayoutProgress(to);
+          }
+        };
+
+        cartLayoutRafRef.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(cartLayoutRafRef.current);
+      }, [cartOpen]);
 
       useEffect(() => {
         setFruitOffset(offset => Math.min(offset, maxFruitOffset));
@@ -2413,6 +2508,7 @@
 	      const addBoxToCart = () => {
 	        setReplacementFruitId(null);
 	        setHoveredCell(null);
+	        setCartOpen(true);
       };
 
       const turnFruitPage = (direction) => {
@@ -2432,11 +2528,16 @@
         updateFruitStripDrag(e);
       };
 
-      const onFruitStripPointerUp = (e) => {
-        finishFruitStripDrag(e);
-      };
+	      const onFruitStripPointerUp = (e) => {
+	        finishFruitStripDrag(e);
+	      };
 
-	      return (
+	      const cartBoxFruits = [...placedFruits]
+	        .sort((a, b) => a.cell - b.cell)
+	        .map(item => FRUIT_ITEMS[item.appleId])
+	        .filter(Boolean);
+
+		      return (
 	        <div
 	          onPointerDown={() => {
 	            setOpenComboIndex(null);
@@ -2445,7 +2546,7 @@
 	          style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#F7F8FA', position: 'relative' }}
 	        >
           <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
-            <ViewOffset shift={displayedScreenShift} />
+            <ViewOffset shift={displayedScreenShift} shiftX={cartContentOffset} />
             <color attach="background" args={['#F7F8FA']} />
             <ambientLight intensity={lightIntensity * 0.25} />
             <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
@@ -2580,28 +2681,32 @@
             onContextMenu={(e) => e.preventDefault()}
             style={{
               position: 'absolute',
-              left: '50%',
-              top: 104,
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 24,
+		              left: TOP_CATALOG_SIDE_GAP,
+		              top: 104,
+		              transform: 'none',
+	              display: 'flex',
+	              alignItems: 'flex-start',
+	              gap: 24,
 	              zIndex: 35,
-              width: 'min(1580px, calc(100vw - 104px))',
-              justifyContent: 'center',
-              userSelect: 'none',
-            }}
-          >
-            {canScrollPrev ? (
+              width: `calc(100vw - ${(cartDrawerViewportOffset + TOP_CATALOG_SIDE_GAP * 2).toFixed(2)}px)`,
+			              transition: 'none',
+		              justifyContent: 'center',
+		              userSelect: 'none',
+		            }}
+		          >
+		            {canScrollPrev ? (
               <button
                 type="button"
                 onClick={() => turnFruitPage(-1)}
                 onContextMenu={(e) => e.preventDefault()}
-                style={{
-                  width: 30,
-                  height: 30,
-                  marginTop: 22,
-                  padding: 0,
+	                style={{
+	                  position: 'absolute',
+	                  left: `calc(50% - ${(fruitViewportWidth / 2 + 36 + TOP_CATALOG_ARROW_GAP).toFixed(2)}px)`,
+	                  top: 22,
+	                  zIndex: 2,
+			                  width: 36,
+			                  height: 36,
+	                  padding: 0,
                   border: 0,
                   borderRadius: '50%',
                   background: 'transparent',
@@ -2618,10 +2723,10 @@
                   alt=""
                   style={{ width: 25, height: 25, display: 'block', pointerEvents: 'none', WebkitUserDrag: 'none' }}
                 />
-              </button>
-            ) : (
-              <div style={{ width: 30, height: 30, marginTop: 22 }} />
-            )}
+	              </button>
+	            ) : (
+	              null
+	            )}
 
 	            <div
 	              onPointerDown={onFruitStripPointerDown}
@@ -2655,7 +2760,7 @@
               >
                 {isFruitCatalog ? (
                   FRUIT_ITEMS.map((fruit, id) => (
-                    <button
+	              <button
                       key={fruit.name}
                       type="button"
                       onPointerDown={(e) => onApplePointerDown(e, id)}
@@ -2700,7 +2805,7 @@
 		                    <div
 		                      key={`${activeCatalogTab}-${index}`}
 		                      data-combo-ui="true"
-		                      onPointerDown={(e) => e.stopPropagation()}
+		                      onPointerDown={(e) => onComboPointerDown(e, index)}
 		                      onClick={(e) => onComboCardClick(e, index)}
 		                      style={{
 		                        width: 92,
@@ -2745,15 +2850,14 @@
 	                    </div>
 	                  );
 	                  })
-	                )}
-	              </div>
-	              </div>
-	              {!isFruitCatalog && openComboIndex != null && activeCatalogItems[openComboIndex] ? (
-	                <div
-	                  data-combo-ui="true"
-	                  onPointerDown={(e) => e.stopPropagation()}
-	                  onClick={(e) => onComboCardClick(e, openComboIndex)}
-	                  style={{
+		                )}
+		          </div>
+		          </div>
+		              {!isFruitCatalog && openComboIndex != null && activeCatalogItems[openComboIndex] ? (
+		                <div
+		                  data-combo-ui="true"
+		                  onPointerDown={(e) => e.stopPropagation()}
+		                  style={{
 	                    position: 'absolute',
 	                    left: comboHoverPanelLeft,
 	                    top: -18,
@@ -2792,7 +2896,7 @@
 	                    }}
 	                  >
 		                    {activeCatalogItems[openComboIndex].name}
-	                  </div>
+		            </div>
 		                  <div
 		                    style={{
 		                      width: '100%',
@@ -2923,11 +3027,14 @@
                 type="button"
                 onClick={() => turnFruitPage(1)}
                 onContextMenu={(e) => e.preventDefault()}
-                style={{
-                  width: 30,
-                  height: 30,
-                  marginTop: 22,
-                  padding: 0,
+	                style={{
+	                  position: 'absolute',
+	                  right: `calc(50% - ${(fruitViewportWidth / 2 + 36 + TOP_CATALOG_ARROW_GAP).toFixed(2)}px)`,
+	                  top: 22,
+	                  zIndex: 2,
+			                  width: 36,
+			                  height: 36,
+	                  padding: 0,
                   border: 0,
                   borderRadius: '50%',
                   background: 'transparent',
@@ -2951,13 +3058,12 @@
                     transform: 'scaleX(-1)',
                   }}
                 />
-              </button>
-            ) : (
-              <div style={{ width: 30, height: 30, marginTop: 22 }} />
-            )}
-          </div>
+	              </button>
+	            ) : (
+	              null
+	            )}
 
-          <div
+	          <div
             role="tablist"
             aria-label="商品カテゴリ"
             style={{
@@ -2966,7 +3072,8 @@
               top: CATALOG_SWITCH_STYLE.top,
               width: CATALOG_SWITCH_STYLE.width,
               height: CATALOG_SWITCH_STYLE.height,
-              transform: 'translateX(-50%)',
+              transform: `translateX(calc(-50% + ${catalogSwitchOffset}px))`,
+              transition: 'none',
               border: 0,
               borderRadius: 999,
               overflow: 'hidden',
@@ -3085,6 +3192,7 @@
                 </button>
               );
             })}
+	            </div>
 	            </div>
 	          </div>
 
@@ -3238,10 +3346,10 @@
             </span>
           </button>
 
-          <button
-            type="button"
-            aria-label="カート"
-            onClick={addBoxToCart}
+	          <button
+	            type="button"
+	            aria-label="カート"
+	            onClick={addBoxToCart}
             style={{
               position: 'absolute',
               right: PAGE_CART_POSITION.right,
@@ -3294,10 +3402,216 @@
                 }}
               >
                 0
-              </span>
-            </span>
-          </button>
-        </div>
+	              </span>
+	            </span>
+	          </button>
+
+	          <aside
+	            onPointerDown={(e) => e.stopPropagation()}
+	            aria-hidden={!cartOpen}
+	            style={{
+	              position: 'absolute',
+	              top: 0,
+	              right: 0,
+	              width: CART_DRAWER_WIDTH,
+	              height: '100vh',
+	              background: '#ffffff',
+	              borderLeft: '1px solid #D9DEE3',
+	              boxSizing: 'border-box',
+	              zIndex: 80,
+		              transform: `translateX(${((1 - cartLayoutProgress) * 100).toFixed(3)}%)`,
+		              transition: 'none',
+	              color: '#111111',
+	              display: 'flex',
+	              flexDirection: 'column',
+		              pointerEvents: cartLayoutProgress > 0.98 ? 'auto' : 'none',
+	            }}
+	          >
+	            <div
+	              style={{
+	                padding: '34px 28px 18px',
+	                display: 'flex',
+	                alignItems: 'center',
+	                justifyContent: 'space-between',
+	              }}
+	            >
+	              <div style={{ font: '400 28px/1 -apple-system, BlinkMacSystemFont, sans-serif', letterSpacing: 0 }}>
+	                CART
+	              </div>
+		              <button
+		                type="button"
+		                onClick={() => setCartOpen(false)}
+		                aria-label="カートを閉じる"
+		                style={{
+			                  width: 36,
+			                  height: 36,
+		                  border: 0,
+		                  borderRadius: '50%',
+		                  background: 'transparent',
+		                  color: '#111111',
+		                  display: 'grid',
+		                  placeItems: 'center',
+		                  padding: 0,
+		                  cursor: 'pointer',
+			                  font: '400 32px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+		                }}
+		              >
+		                ×
+		              </button>
+	            </div>
+
+	            <div style={{ flex: 1, overflow: 'auto', padding: '0 28px' }}>
+	              <div
+	                style={{
+	                  borderBottom: '1px solid #D9DEE3',
+	                  padding: '14px 0 22px',
+	                }}
+	              >
+	                <div style={{ display: 'grid', gridTemplateColumns: '118px 1fr', columnGap: 16, alignItems: 'start' }}>
+	                  <div
+	                    style={{
+	                      width: 118,
+	                      height: 86,
+	                      borderRadius: 8,
+	                      background: '#F7F8FA',
+	                      display: 'grid',
+	                      gridTemplateColumns: 'repeat(2, 1fr)',
+	                      gridTemplateRows: 'repeat(2, 1fr)',
+	                      overflow: 'hidden',
+	                    }}
+	                  >
+	                    {[0, 1, 2, 3].map(index => {
+	                      const fruit = cartBoxFruits[index];
+	                      return (
+	                        <div
+	                          key={index}
+	                          style={{
+	                            display: 'grid',
+	                            placeItems: 'center',
+	                            borderRight: index % 2 === 0 ? '1px solid rgba(210,219,228,0.85)' : 0,
+	                            borderBottom: index < 2 ? '1px solid rgba(210,219,228,0.85)' : 0,
+	                          }}
+	                        >
+	                          {fruit ? (
+	                            <img
+	                              src={fruit.wholeSrc}
+	                              alt=""
+	                              draggable={false}
+	                              style={{ width: 40, height: 40, objectFit: 'contain', WebkitUserDrag: 'none' }}
+	                            />
+	                          ) : null}
+	                        </div>
+	                      );
+	                    })}
+	                  </div>
+	                  <div>
+	                    <div style={{ font: '400 16px/1.2 -apple-system, BlinkMacSystemFont, sans-serif' }}>
+	                      BOX 1 <span style={{ fontSize: 10, color: '#555555', marginLeft: 5 }}>{selectedSize.size} size ({selectedSize.weight})</span>
+	                    </div>
+	                    <div style={{ marginTop: 10, display: 'grid', gap: 5 }}>
+	                      {cartBoxFruits.length > 0 ? cartBoxFruits.map((fruit, index) => (
+	                        <div
+	                          key={`${fruit.name}-${index}`}
+	                          style={{ font: '400 11px/1.25 -apple-system, BlinkMacSystemFont, sans-serif', color: '#111111' }}
+	                        >
+	                          {fruit.name} <span style={{ color: '#555555' }}>(200g)</span>
+	                        </div>
+	                      )) : (
+	                        <div style={{ font: '400 12px/1.4 -apple-system, BlinkMacSystemFont, sans-serif', color: '#666666' }}>
+	                          ボックスは空です
+	                        </div>
+	                      )}
+	                    </div>
+	                  </div>
+	                </div>
+	                <div
+	                  style={{
+	                    display: 'flex',
+	                    justifyContent: 'flex-end',
+	                    alignItems: 'center',
+	                    gap: 18,
+	                    marginTop: 12,
+	                    font: '400 13px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+	                  }}
+	                >
+	                  <span>3,980円（税込）</span>
+	                  <span style={{ display: 'inline-grid', gridTemplateColumns: '20px 34px 20px', border: '1px solid #BFC5CB', height: 20 }}>
+	                    <span style={{ display: 'grid', placeItems: 'center', borderRight: '1px solid #BFC5CB' }}>−</span>
+	                    <span style={{ display: 'grid', placeItems: 'center' }}>1</span>
+	                    <span style={{ display: 'grid', placeItems: 'center', borderLeft: '1px solid #BFC5CB' }}>＋</span>
+	                  </span>
+	                </div>
+	              </div>
+
+	              {[2, 3, 4].map((boxNumber, index) => (
+	                <div
+	                  key={boxNumber}
+	                  style={{
+	                    height: 52,
+	                    borderBottom: '1px solid #D9DEE3',
+	                    display: 'flex',
+	                    alignItems: 'center',
+	                    justifyContent: 'space-between',
+	                    font: '400 14px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+	                  }}
+	                >
+	                  <span>BOX {boxNumber}</span>
+	                  <span style={{ fontSize: 10, color: '#555555' }}>M size (700g)</span>
+	                  <span>{index === 2 ? '1,980円' : '2,980円'}（税込）</span>
+	                </div>
+	              ))}
+	            </div>
+
+	            <div
+	              style={{
+	                borderTop: '1px solid #D9DEE3',
+	                padding: '16px 28px 22px',
+	              }}
+	            >
+	              <div style={{ display: 'flex', justifyContent: 'space-between', font: '400 15px/1 -apple-system, BlinkMacSystemFont, sans-serif' }}>
+	                <span>小計</span>
+	                <span>11,920円（税込）</span>
+	              </div>
+		              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24 }}>
+		                <button
+		                  type="button"
+		                  onClick={() => setCartOpen(false)}
+		                  aria-label="カートを閉じる"
+		                  style={{
+			                    width: 48,
+			                    height: 24,
+			                    border: 0,
+		                    borderRadius: 999,
+		                    background: 'transparent',
+		                    color: '#111111',
+		                    display: 'grid',
+		                    placeItems: 'center',
+		                    padding: 0,
+		                    cursor: 'pointer',
+			                    font: '400 24px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+		                  }}
+		                >
+		                  →
+		                </button>
+		                <button
+		                  type="button"
+		                  style={{
+		                    border: 0,
+		                    borderRadius: 999,
+		                    background: '#050505',
+		                    color: '#ffffff',
+			                    width: 150,
+			                    height: 34,
+			                    font: '400 14px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+		                    cursor: 'pointer',
+		                  }}
+		                >
+		                  レジへ進む
+		                </button>
+		              </div>
+	            </div>
+	          </aside>
+	        </div>
       );
     }
 

@@ -22,14 +22,14 @@
   <script type="importmap">
   {
     "imports": {
-      "react":              "https://esm.sh/react@19.2.7",
-      "react/jsx-runtime":  "https://esm.sh/react@19.2.7/jsx-runtime",
-      "react-dom":          "https://esm.sh/react-dom@19.2.7",
-      "react-dom/client":   "https://esm.sh/react-dom@19.2.7/client",
+      "react":              "https://esm.sh/react@19.2.8",
+      "react/jsx-runtime":  "https://esm.sh/react@19.2.8/jsx-runtime",
+      "react-dom":          "https://esm.sh/react-dom@19.2.8",
+      "react-dom/client":   "https://esm.sh/react-dom@19.2.8/client",
       "three":              "https://esm.sh/three@0.169.0",
-      "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.6.1?deps=react@19.2.7,three@0.169.0&external=react,three",
-      "@react-three/drei":  "https://esm.sh/@react-three/drei@10.7.7?deps=react@19.2.7,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
-      "@react-three/csg":   "https://esm.sh/@react-three/csg@4.0.0?deps=react@19.2.7,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
+      "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.6.1?deps=react@19.2.8,three@0.169.0&external=react,three",
+      "@react-three/drei":  "https://esm.sh/@react-three/drei@10.7.7?deps=react@19.2.8,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
+      "@react-three/csg":   "https://esm.sh/@react-three/csg@4.0.0?deps=react@19.2.8,three@0.169.0,@react-three/fiber@9.6.1&external=react,three,@react-three/fiber",
       "three-stdlib":       "https://esm.sh/three-stdlib@2.35.0?deps=three@0.169.0&external=three"
     }
   }
@@ -51,8 +51,11 @@
     });
   </script>
 
-  <!-- Embedded PNG data URLs allow WebGL textures to work when opened via file:// -->
-  <script src="img/fruits/Cut Fruit/textures-all.js"></script>
+  <!--
+    本地调切片 PNG 时不要加载打包版 textures-all.js。
+    这个文件里是旧的 base64 图片；如果加载它，删改 Cut Fruit 里的 PNG 后网页仍会显示旧图。
+  -->
+  <!-- <script src="img/fruits/Cut Fruit/textures-all.js"></script> -->
 
   <!-- Babel Standalone: compiles TSX in-browser so this file works via file:// double-click -->
   <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
@@ -75,25 +78,42 @@
        ══════════════════════════════════════════════ */
 
     const BOX_W = 2.8, BOX_H = 1.0, BOX_D = 1.8, WALL = 0.04;
-    const HOLE_W = (BOX_W - 3 * WALL) / 2;
-    const HOLE_D = (BOX_D - 3 * WALL) / 2;
-    const LEFT_X  = -BOX_W / 2 + WALL + HOLE_W / 2;
-    const RIGHT_X = -LEFT_X;
-    const FRONT_Z = BOX_D / 2 - WALL - HOLE_D / 2;
-    const BACK_Z  = -FRONT_Z;
     const CELL_Y  = 0.45;   // above the cavity floor so the apple plane sits INSIDE the compartment
 
-    // 4 cells in local coords (parent group transforms them)
-    const CELLS = [
-      { x: LEFT_X,  y: CELL_Y, z: BACK_Z  },  // 0: back-left
-      { x: RIGHT_X, y: CELL_Y, z: BACK_Z  },  // 1: back-right
-      { x: LEFT_X,  y: CELL_Y, z: FRONT_Z },  // 2: front-left
-      { x: RIGHT_X, y: CELL_Y, z: FRONT_Z },  // 3: front-right
-    ];
+    const createBoxLayout = (boxW = BOX_W, boxD = BOX_D) => {
+      const holeW = (boxW - 3 * WALL) / 2;
+      const holeD = (boxD - 3 * WALL) / 2;
+      const leftX = -boxW / 2 + WALL + holeW / 2;
+      const rightX = -leftX;
+      const frontZ = boxD / 2 - WALL - holeD / 2;
+      const backZ = -frontZ;
+      return {
+        boxW,
+        boxH: BOX_H,
+        boxD,
+        wall: WALL,
+        holeW,
+        holeD,
+        leftX,
+        rightX,
+        frontZ,
+        backZ,
+        cellY: CELL_Y,
+        // 4 cells in local coords (parent group transforms them)
+        cells: [
+          { x: leftX,  y: CELL_Y, z: backZ  },  // 0: back-left
+          { x: rightX, y: CELL_Y, z: backZ  },  // 1: back-right
+          { x: leftX,  y: CELL_Y, z: frontZ },  // 2: front-left
+          { x: rightX, y: CELL_Y, z: frontZ },  // 3: front-right
+        ],
+      };
+    };
+    const DEFAULT_BOX_LAYOUT = createBoxLayout();
+    const CELLS = DEFAULT_BOX_LAYOUT.cells;
     // 左右格子的内容中心修正：同时影响果切、水果信息和“入れ替え”文字。
     const CELL_CONTENT_CENTER_SHIFT = 0.02;
-    const getCellContentCenterShift = (cellIndex) => (
-      CELLS[cellIndex].x < 0 ? -CELL_CONTENT_CENTER_SHIFT : CELL_CONTENT_CENTER_SHIFT
+    const getCellContentCenterShift = (cellIndex, layout = DEFAULT_BOX_LAYOUT, shift = CELL_CONTENT_CENTER_SHIFT) => (
+      layout.cells[cellIndex].x < 0 ? -shift : shift
     );
     // 鼠标长按/旋转盒子时的统一隐藏节奏：白色 X 和外侧两个按钮用这组。
     const PRESS_HIDE_START_DELAY = 320; // 长按后开始消失前的停顿：数值越大，越晚开始消失。
@@ -117,11 +137,93 @@
     const BOX_ACTION_SCALE_TRANSITION_MS = PRESS_UI_DISMISS_TRANSITION_MS; // 外侧两个按钮长按旋转时整体放大/缩小动画时长。
     const BOX_ACTION_EASING = 'cubic-bezier(.2,.8,.2,1)'; // 外侧两个按钮展开/收回/缩放的统一缓动曲线。
     const BOX_ACTION_CLICK_SPIN_MS = 520; // 外侧按钮点击后，前面圆形图标旋转一圈的时长。
-    // 格子左上角水果信息文字的位置微调：x 越小越靠左，y 越大越靠上，z 越小越靠盒子后侧。
-    const CELL_INFO_LABEL_OFFSET = { x: -0.62, y: 0.080, z: -0.34 };
+    // 格子左上角文字和右上角 X 的位置：按盒子尺寸单独调。
+    // info：x 越小越靠左，y 越大越靠上，z 越小越靠盒子后侧。
+    // close：x 越大越靠右，y 越大越靠上，z 越小越靠盒子后侧。
+    const CELL_UI_OFFSETS_BY_SIZE = {
+      M: {
+        info: { x: -0.62, y: 0.080, z: -0.34 },
+        close: { x: 0.56, y: 0.08, z: -0.32 },
+      },
+      L: {
+        info: { x: -0.70, y: 0.090, z: -0.40 },
+        close: { x: 0.64, y: 0.09, z: -0.38 },
+      },
+      S: {
+        info: { x: -0.52, y: 0.070, z: -0.28 },
+        close: { x: 0.48, y: 0.07, z: -0.26 },
+      },
+    };
+    // 盒子正面灰色说明文字的默认设置；实际使用时会被每个 size 自己的 noticeLabel 覆盖。
+    // x 越小越靠左，y 越大越靠上，zOffset 越大越靠盒子正面外侧；width/height 是文字平面的宽高。
+    const BOX_NOTICE_LABEL_DEFAULT = { x: -0.77, y: 0.08, zOffset: 0.035, width: 0.96, height: 0.31 };
+    const BOX_NOTICE_TEXT_COLOR = '#A7B6C1'; // 盒子说明文字颜色：这里用 #RRGGBB，编辑器一般可以直接弹调色板。
+    const BOX_NOTICE_TEXT_OPACITY = 0.92; // 盒子说明文字透明度：1 是不透明，0 是完全透明。
+    // 右下角购物车入口位置：right 越大越靠左，bottom 越大越靠上。
+    const PAGE_CART_POSITION = { right: 64, bottom: 32 };
+    // 右下角购物车入口整体间距：iconTextGap 是图标和 (cart) 的距离。
+    const PAGE_CART_LAYOUT = { iconTextGap: 10 };
+    // 右下角购物车图标大小。
+    const PAGE_CART_ICON_SIZE = { width: 58, height: 46 };
+    // 右下角购物车 (cart) 文字大小和上下微调：textOffsetY 越大越靠下。
+    const PAGE_CART_TEXT_STYLE = { fontSize: 32, textOffsetY: 2 };
+    // 右下角购物车数量位置和大小：right 越小越靠右，top 越小越靠上。
+    const PAGE_CART_COUNT_STYLE = { fontSize: 26, right: -21, top: -15 };
+    // 左下角尺寸选择：点击会按这里的顺序切换。
+    const SIZE_OPTIONS = [
+      // boxWidth / boxDepth 是真实改盒子的长宽；盒子高度、壁厚、圆角、十字分隔厚度不跟着缩放。
+      // noticeLabel 是盒子正面说明文字的位置和大小：不同尺寸可以单独调。
+      // screenShift 是盒子静止后的屏幕上下位置：数值越大，盒子越往屏幕下方；不会改变 3D 模型远近和旋转中心。
+      // switchScreenShift 是切换成该尺寸那一瞬间的起始构图位置；主要给 S 用，避免从 L 切过来时底部露缝。
+      // shakeMotion 是每个尺寸自己的下沉/回弹微调：先以 S 不露底为基准，M/L 再逐级加大。
+      { size: 'M', weight: '800g', boxWidth: 2.8, boxDepth: 1.8, screenShift: 0.17, shakeMotion: { downDistance: 0.052, reboundDistance: 0.0015, settleDistance: 0.001 }, noticeLabel: { x: -0.77, y: 0.08, zOffset: 0.035, width: 0.96, height: 0.31 } },
+      { size: 'L', weight: '1KG', boxWidth: 3.12, boxDepth: 2.02, screenShift: 0.15, shakeMotion: { downDistance: 0.064, reboundDistance: 0.002, settleDistance: 0.0012 }, noticeLabel: { x: -0.88, y: 0.08, zOffset: 0.055, width: 0.96, height: 0.31 } },
+      { size: 'S', weight: '600g', boxWidth: 2.48, boxDepth: 1.60, screenShift: 0.19, switchScreenShift: 0.215, shakeMotion: { downDistance: 0.028, reboundDistance: 0, settleDistance: 0 }, noticeLabel: { x: -0.63, y: 0.08, zOffset: 0.035, width: 0.92, height: 0.30 } },
+    ];
+    // 左下角尺寸选择器位置：left 越大越靠右，bottom 越大越靠上。
+    const SIZE_SELECTOR_POSITION = { left: 38, bottom: 26 };
+    // 左下角尺寸卡片大小。
+    const SIZE_SELECTOR_CARD_SIZE = { width: 60, height: 60 };
+    // 左下角尺寸文字和间距：labelFont 和 cart 一样；gap 是方块和 (size) 的距离。
+    const SIZE_SELECTOR_TEXT_STYLE = { sizeFont: 30, weightFont: 10, labelFont: PAGE_CART_TEXT_STYLE.fontSize, gap: 10, weightGap: 5 };
+    // 切换盒子尺寸时的旋转动画：duration 越大越慢；switchAt 是每圈进度到多少时真正切换模型尺寸。
+    // cruiseMsPerTurn 控制中段匀速段速度；accelMs/decelMs 越大，起步和收尾越柔。
+    // continueDecelTurns 是离“最终停止点”多远才开始减速；追加的圈之间始终保持连续速度。
+    const SIZE_CHANGE_SPIN = {
+      duration: 780,
+      switchAt: 0.5,
+      turns: 1,
+      direction: -1,
+      cruiseMsPerTurn: 640,
+      accelMs: 180,
+      decelMs: 240,
+      continueDecelTurns: 0.34,
+      screenShiftFollowMs: 240,
+    };
+    // 当前尺寸切换统一用“下沉 -> 回弹”，空盒和有水果都走这一套。
+    const SIZE_CHANGE_SHAKE = {
+      duration: 420,          // 单次下沉回弹总时长，单位毫秒。越小越利落。
+      switchAt: 0.18,         // 到达最低点并切换盒子尺寸的时间点。
+      downDistance: 0.052,    // 默认下沉距离；不同尺寸可在 shakeMotion 里覆盖。
+      reboundDistance: 0.0015, // 默认第一次回弹超过原位的距离。
+      settleDistance: 0.001,  // 默认回弹后的轻微二次下沉距离。
+    };
+    // 盒子回弹时，现有水果保持不透明，并各自做一次短促的落下动作。
+    const SIZE_SHAKE_FRUIT_DROP = {
+      height: 0.22,
+      duration: 0.42,
+      stagger: 0.008,
+      rotation: 0.07,
+    };
 
-    const CUT_FRUIT_TEXTURE_SRCS = window.CUT_FRUIT_TEXTURE_SRCS;
-    const cutFruit = (src) => CUT_FRUIT_TEXTURE_SRCS[src];
+    const CUT_FRUIT_BASE_PATH = 'img/fruits/Cut Fruit/';
+    const USE_EMBEDDED_CUT_TEXTURES = false; // 切片图片来源：false=实时读取 PNG；true=读取 textures-all.js 打包旧图。
+    const CUT_FRUIT_TEXTURE_SRCS = window.CUT_FRUIT_TEXTURE_SRCS || {};
+    const cutFruit = (src) => (
+      USE_EMBEDDED_CUT_TEXTURES && CUT_FRUIT_TEXTURE_SRCS[src]
+        ? CUT_FRUIT_TEXTURE_SRCS[src]
+        : `${CUT_FRUIT_BASE_PATH}${src}`
+    );
     const FRUIT_ITEMS = [
       { name: 'ふじりんご', wholeSrc: 'img/fruits/Whole Fruit/Apple/Red.png', cutSrc: cutFruit('Apple/Red.png') },
       { name: '王林りんご', wholeSrc: 'img/fruits/Whole Fruit/Apple/Green.png', cutSrc: cutFruit('Apple/Green.png') },
@@ -148,19 +250,41 @@
       { name: '黄スイカ', wholeSrc: 'img/fruits/Whole Fruit/Watermelon/Yellow.png', cutSrc: cutFruit('Watermelon/Yellow.png') },
     ];
     const FRUITS_PER_PAGE = 10;
+    const CATALOG_TABS = [
+      { id: 'fruit', label: '単品' },
+      { id: 'recommend', label: '人気セット' },
+      { id: 'history', label: '履歴' },
+    ];
+    const TEST_BOX_IMAGES = [
+      'img/test/Fruit Box 1.png',
+      'img/test/Fruit Box 2.png',
+      'img/test/Fruit Box 3.png',
+    ];
+	    const TEST_BOX_ITEMS = Array.from({ length: 12 }, (_, index) => ({
+	      name: `セット ${index + 1}`,
+	      imageSrc: TEST_BOX_IMAGES[index % TEST_BOX_IMAGES.length],
+	      fruits: [0, 3, 2, 4].map((fruitOffset) => {
+	        const appleId = (index + fruitOffset) % FRUIT_ITEMS.length;
+	        const fruit = FRUIT_ITEMS[appleId];
+	        return { appleId, name: fruit.name, iconSrc: fruit.wholeSrc };
+	      }),
+	    }));
+    // 顶部三段分类按钮位置和大小：top 越大越靠下，width/height 控制胶囊整体尺寸。
+    const CATALOG_SWITCH_STYLE = { top: 236, width: 300, height: 26, fontSize: 11 };
 
+    // 水果旋转隐藏后还会再次出现，因此保留已解码纹理，避免重新挂载时异步解码造成单帧闪烁。
+    const FRUIT_TEXTURE_CACHE = new Map();
     function useAppleTexture(src) {
-      const texture = useMemo(() => {
+      return useMemo(() => {
+        if (FRUIT_TEXTURE_CACHE.has(src)) return FRUIT_TEXTURE_CACHE.get(src);
         const loaded = new THREE.TextureLoader().load(src);
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.minFilter = THREE.LinearFilter;
         loaded.magFilter = THREE.LinearFilter;
         loaded.generateMipmaps = false;
+        FRUIT_TEXTURE_CACHE.set(src, loaded);
         return loaded;
       }, [src]);
-
-      useEffect(() => () => texture.dispose(), [texture]);
-      return texture;
     }
 
     /* ===== 果切放入格子的落下动画：整体手感可在这里调整 =====
@@ -171,6 +295,11 @@
       stagger: 0.035,
       appearDuration: 0.10, // 入场淡入时长：在正式下落前快速变为完全不透明。
       exitDuration: 0.18,   // 替换旧水果时的淡出时长。
+    };
+    // 切换盒子尺寸时，水果先短暂停留再淡出；盒子最终停稳后重新播放落下动画。
+    const SIZE_SPIN_FRUIT_ANIMATION = {
+      hideDelayMs: 120,    // 开始旋转后等待多久才开始淡出，避免一点击就立刻消失。
+      fadeDuration: 0.18,  // 淡出速度，单位秒。
     };
 
     const seededUnit = (seed) => {
@@ -204,7 +333,9 @@
       pieceIndex,
       cellIndex,
       animationKey,
+      settleKey = 0,
       exiting = false,
+      exitDuration = FRUIT_DROP_ANIMATION.exitDuration,
     }) {
       const meshRef = useRef(null);
       const materialRef = useRef(null);
@@ -212,6 +343,10 @@
       const exitElapsedRef = useRef(0);
       const exitStartOpacityRef = useRef(1);
       const finishedRef = useRef(false);
+      const settleElapsedRef = useRef(0);
+      const settleActiveRef = useRef(false);
+      const settleStartRef = useRef({ x: 0, y: 0, rotation: 0 });
+      const previousSettleKeyRef = useRef(settleKey);
       const motion = useMemo(() => {
         const seed = (animationKey + 1) * 131 + (cellIndex + 1) * 47 + (pieceIndex + 1) * 19;
         const side = pieceIndex % 2 === 0 ? -1 : 1;
@@ -252,6 +387,30 @@
         exitStartOpacityRef.current = materialRef.current?.opacity ?? 1;
       }, [exiting]);
 
+      useEffect(() => {
+        if (settleKey <= 0 || settleKey === previousSettleKeyRef.current || !meshRef.current) return;
+        previousSettleKeyRef.current = settleKey;
+        const seed = settleKey * 149 + (cellIndex + 1) * 43 + (pieceIndex + 1) * 23;
+        const side = pieceIndex % 2 === 0 ? -1 : 1;
+        settleStartRef.current = {
+          x: (seededUnit(seed + 1) - 0.5) * 0.045,
+          y: SIZE_SHAKE_FRUIT_DROP.height + seededUnit(seed + 2) * 0.045,
+          rotation: side * (SIZE_SHAKE_FRUIT_DROP.rotation + seededUnit(seed + 3) * 0.045),
+        };
+        settleElapsedRef.current = -Math.floor(pieceIndex / 2) * SIZE_SHAKE_FRUIT_DROP.stagger;
+        settleActiveRef.current = true;
+        finishedRef.current = true;
+        meshRef.current.visible = true;
+        meshRef.current.position.set(settleStartRef.current.x, settleStartRef.current.y, 0);
+        meshRef.current.rotation.set(0, 0, settleStartRef.current.rotation);
+        if (materialRef.current) {
+          materialRef.current.opacity = 1;
+          materialRef.current.alphaTest = 0.5;
+          materialRef.current.transparent = false;
+          materialRef.current.needsUpdate = true;
+        }
+      }, [settleKey, cellIndex, pieceIndex]);
+
       useFrame((_, delta) => {
         const mesh = meshRef.current;
         const material = materialRef.current;
@@ -260,7 +419,7 @@
         if (exiting) {
           exitElapsedRef.current += Math.min(delta, 0.05);
           const exitProgress = THREE.MathUtils.clamp(
-            exitElapsedRef.current / FRUIT_DROP_ANIMATION.exitDuration,
+            exitElapsedRef.current / exitDuration,
             0,
             1,
           );
@@ -277,9 +436,38 @@
           return;
         }
 
+        if (settleActiveRef.current) {
+          settleElapsedRef.current += Math.min(delta, 0.05);
+          if (settleElapsedRef.current < 0) return;
+          const t = THREE.MathUtils.clamp(
+            settleElapsedRef.current / SIZE_SHAKE_FRUIT_DROP.duration,
+            0,
+            1,
+          );
+          const settle = easeOutCubic(t);
+          const bounce = easeOutBounce(t);
+          mesh.position.set(
+            THREE.MathUtils.lerp(settleStartRef.current.x, 0, settle),
+            THREE.MathUtils.lerp(settleStartRef.current.y, 0, bounce),
+            0,
+          );
+          mesh.rotation.set(
+            0,
+            0,
+            THREE.MathUtils.lerp(settleStartRef.current.rotation, 0, settle),
+          );
+          if (t >= 1) {
+            mesh.position.set(0, 0, 0);
+            mesh.rotation.set(0, 0, 0);
+            settleActiveRef.current = false;
+          }
+          return;
+        }
+
         if (finishedRef.current) return;
         elapsedRef.current += Math.min(delta, 0.05);
-        const fadeStart = Math.max(0, motion.delay - FRUIT_DROP_ANIMATION.appearDuration);
+        // 淡入和下落必须同一时刻开始，避免切片先在空中静止闪现再下落。
+        const fadeStart = motion.delay;
         if (elapsedRef.current < fadeStart) {
           mesh.visible = false;
           return;
@@ -292,14 +480,13 @@
           1,
         );
         material.opacity = easeOutCubic(appearProgress);
-        const shouldBeTransparent = appearProgress < 0.999;
-        const nextAlphaTest = shouldBeTransparent ? 0.02 : 0.5;
-        if (material.alphaTest !== nextAlphaTest) {
-          material.alphaTest = nextAlphaTest;
+        // 整个下落过程保持同一种透明材质模式，避免在空中切换 shader 导致单帧跳变。
+        if (material.alphaTest !== 0.02) {
+          material.alphaTest = 0.02;
           material.needsUpdate = true;
         }
-        if (material.transparent !== shouldBeTransparent) {
-          material.transparent = shouldBeTransparent;
+        if (!material.transparent) {
+          material.transparent = true;
           material.needsUpdate = true;
         }
         if (elapsedRef.current < motion.delay) return;
@@ -321,6 +508,10 @@
         if (t >= 1) {
           mesh.position.set(0, 0, 0);
           mesh.rotation.set(0, 0, 0);
+          material.opacity = 1;
+          material.alphaTest = 0.5;
+          material.transparent = false;
+          material.needsUpdate = true;
           finishedRef.current = true;
         }
       });
@@ -354,14 +545,69 @@
 
     /* 每片水果都是独立的无光照平面，并继承盒子的旋转。
        固定绘制顺序只控制水果之间的遮挡，不影响盒子对水果的遮挡。 */
-    function Apple3D({ appleId, cellIndex, animationKey = 0, exiting = false }) {
-      const cell = CELLS[cellIndex];
+    function Apple3D({
+      appleId,
+      cellIndex,
+      layout = DEFAULT_BOX_LAYOUT,
+      boxSize = 'M',
+      animationKey = 0,
+      settleKey = 0,
+      exiting = false,
+      exitDuration = FRUIT_DROP_ANIMATION.exitDuration,
+    }) {
+      const cell = layout.cells[cellIndex];
       const fruit = FRUIT_ITEMS[appleId];
       const texture = useAppleTexture(fruit.cutSrc);
-      // 左侧格子整体向左校正，右侧格子整体向右校正，让内容在各自格子中居中。
-      const cellCenterShift = getCellContentCenterShift(cellIndex);
+      /* ===== 默认水果组放进盒子后的样式：按 S / M / L 分开调 =====
+         这个组包含：苹果、草莓、梨、橘子、猕猴桃、西瓜等没有 boxStyle 的水果。
+         M：每排两组，每组 2 片，一共 2x2 组。
+         L：每排两组，每组 3 片，保持片间距不压缩。
+         S：每排一组，每组 3 片，一共两排。
+      */
+      const defaultStylesBySize = {
+        M: {
+          planeTilt: -1.05,
+          planeSize: 0.6,
+          columnDepthStep: 0.008,
+          columns: [-0.32, -0.19, 0.1, 0.23],
+          rotations: [-0.045, -0.018, 0.018, 0.045, -0.04, -0.012, 0.02, 0.05],
+          rows: [
+            // 屏幕上排：xShift 越小越靠左；z 越小越靠盒子深处。
+            { y: 0.02, z: -0.12, xShift: -0.04 },
+            // 屏幕下排：xShift 越大越靠右；z 越大越靠盒子开口，并遮住上排。
+            { y: 0.07, z: 0.13, xShift: 0.10 },
+          ],
+        },
+        L: {
+          planeTilt: -1.05,
+          planeSize: 0.6,
+          columnDepthStep: 0.008,
+          columns: [-0.45, -0.32, -0.19, 0.10, 0.23, 0.36],
+          rotations: [
+            -0.055, -0.038, -0.018, 0.018, 0.038, 0.055,
+            -0.052, -0.035, -0.012, 0.020, 0.040, 0.060,
+          ],
+          rows: [
+            { y: 0.02, z: -0.12, xShift: -0.02 },
+            { y: 0.07, z: 0.13, xShift: 0.08 },
+          ],
+        },
+        S: {
+          planeTilt: -1.05,
+          planeSize: 0.6,
+          columnDepthStep: 0.008,
+          columns: [-0.13, 0.00, 0.13],
+          rotations: [-0.035, 0.000, 0.035, -0.030, 0.006, 0.040],
+          rows: [
+            { y: 0.02, z: -0.12, xShift: -0.02 },
+            { y: 0.07, z: 0.13, xShift: 0.04 },
+          ],
+        },
+      };
+      const defaultStyle = defaultStylesBySize[boxSize] ?? defaultStylesBySize.M;
 
-      const defaultStyle = {
+      /*
+      const oldDefaultStyle = {
         planeTilt: -1.05,
         planeSize: 0.6,
         columnDepthStep: 0.008,
@@ -374,64 +620,160 @@
           { y: 0.07, z: 0.13, xShift: 0.10 },
         ],
       };
+      */
 
-      /* ===== 桃子放进盒子后的样式：只调桃子就改这里 =====
+      /* ===== 桃子放进盒子后的样式：按 S / M / L 分开调 =====
          planeSize：桃子切片整体大小，数值越大整体越大。
+         columns：每排的切片左右位置；L 是两组各 3 片，M 是原来的两组各 2 片，S 是一组 3 片。
          rows[0].y / rows[1].y：两排的上下位置；两个数差距越大，上下两排间距越宽。
          rows[0].z / rows[1].z：两排在盒子里的前后深度；差距越大，遮挡层次和透视分离越明显。
          rows[*].xShift：单独调整某一排左右位置，避免碰到小格子边缘。
       */
-      const peachStyle = {
-        planeTilt: -1.05,
-        planeSize: 0.72,
-        columnDepthStep: 0.008,
-        columns: [-0.34, -0.18, 0.08, 0.24],
-        rotations: [-0.045, -0.018, 0.018, 0.045, -0.04, -0.012, 0.02, 0.05],
-        rows: [
-          { y: -0.02, z: -0.14, xShift: 0.00 },
-          { y: 0.10, z: 0.18, xShift: 0.09 },
-        ],
+      const peachStylesBySize = {
+        M: {
+          planeTilt: -1.05,
+          planeSize: 0.72,
+          columnDepthStep: 0.008,
+          columns: [-0.34, -0.18, 0.08, 0.24],
+          rotations: [-0.045, -0.018, 0.018, 0.045, -0.04, -0.012, 0.02, 0.05],
+          rows: [
+            { y: -0.02, z: -0.14, xShift: 0.00 },
+            { y: 0.10, z: 0.18, xShift: 0.09 },
+          ],
+        },
+        L: {
+          planeTilt: -1.05,
+          planeSize: 0.72,
+          columnDepthStep: 0.008,
+          columns: [-0.44, -0.31, -0.18, 0.06, 0.19, 0.32],
+          rotations: [
+            -0.055, -0.040, -0.020, 0.018, 0.040, 0.058,
+            -0.052, -0.035, -0.014, 0.020, 0.042, 0.060,
+          ],
+          rows: [
+            { y: -0.02, z: -0.14, xShift: 0.02 },
+            { y: 0.10, z: 0.18, xShift: 0.07 },
+          ],
+        },
+        S: {
+          planeTilt: -1.05,
+          planeSize: 0.72,
+          columnDepthStep: 0.008,
+          columns: [-0.16, 0.00, 0.16],
+          rotations: [-0.040, 0.000, 0.040, -0.035, 0.006, 0.045],
+          rows: [
+            { y: -0.01, z: -0.14, xShift: -0.02 },
+            { y: 0.08, z: 0.13, xShift: 0.04 },
+          ],
+        },
       };
+      const peachStyle = peachStylesBySize[boxSize] ?? peachStylesBySize.M;
 
-      /* ===== 樱桃和葡萄放进盒子后的样式：只调樱桃/葡萄就改这里 =====
+      /* ===== 樱桃和葡萄放进盒子后的样式：按 S / M / L 分开调 =====
          planeSize：每个切片的大小，数值越大每片越大。
-         columns：一排 6 片的位置；每两个数字靠近就是一组，两组之间拉开就是组间距。
+         columns：每排切片位置；每两个数字靠近就是一组，两组之间拉开就是组间距。
          rows：一共三排。y 调上下位置，z 调盒子前后深度，xShift 调整整排左右位置。
       */
-      const cherryGrapeStyle = {
-        planeTilt: -1.05,
-        planeSize: 0.34,
-        layoutPitchRotation: Math.PI / 12, // 樱桃/葡萄整组往前转角度：Math.PI / 9 约等于 20 度
-        columnDepthStep: 0.006,
-        columns: [-0.46, -0.31, -0.10, 0.05, 0.26, 0.41],
-        rotations: [
-          -0.05, -0.025, -0.012, 0.012, 0.025, 0.05,
-          -0.045, -0.02, -0.008, 0.014, 0.03, 0.055,
-          -0.04, -0.018, 0.0, 0.018, 0.036, 0.06,
-        ],
-        rows: [
-          { y: -0.08, z: -0.22, xShift: -0.01 },
-          { y: 0.00, z: 0.00, xShift: 0.02 },
-          { y: 0.08, z: 0.22, xShift: 0.05 },
-        ],
+      const cherryGrapeStylesBySize = {
+        M: {
+          planeTilt: -1.05,
+          planeSize: 0.34,
+          cellContentCenterShift: 0.035, // 葡萄/樱桃组左右格子居中修正：数值越大，左格越往左、右格越往右。
+          layoutPitchRotation: Math.PI / 12, // 樱桃/葡萄整组往前转角度：Math.PI / 9 约等于 20 度
+          columnDepthStep: 0.006,
+          columns: [-0.46, -0.31, -0.10, 0.05, 0.26, 0.41],
+          rotations: [
+            -0.05, -0.025, -0.012, 0.012, 0.025, 0.05,
+            -0.045, -0.02, -0.008, 0.014, 0.03, 0.055,
+            -0.04, -0.018, 0.0, 0.018, 0.036, 0.06,
+          ],
+          rows: [
+            { y: -0.08, z: -0.22, xShift: -0.01 },
+            { y: 0.00, z: 0.00, xShift: 0.02 },
+            { y: 0.08, z: 0.22, xShift: 0.05 },
+          ],
+        },
+        L: {
+          planeTilt: -1.05,
+          planeSize: 0.34,
+          cellContentCenterShift: 0.035, // 葡萄/樱桃组左右格子居中修正：数值越大，左格越往左、右格越往右。
+          groupXShift: -0.035, // L 尺寸葡萄/樱桃整体左右位置：负数往左，正数往右。
+          layoutPitchRotation: Math.PI / 12,
+          columnDepthStep: 0.006,
+          columns: [-0.50, -0.39, -0.18, -0.07, 0.14, 0.25, 0.46, 0.57],
+          rotations: [
+            -0.06, -0.04, -0.026, -0.010, 0.010, 0.026, 0.040, 0.060,
+            -0.055, -0.035, -0.022, -0.006, 0.012, 0.030, 0.046, 0.064,
+            -0.050, -0.030, -0.016, 0.000, 0.018, 0.036, 0.052, 0.070,
+          ],
+          rows: [
+            { y: -0.08, z: -0.22, xShift: -0.02 },
+            { y: 0.00, z: 0.00, xShift: 0.01 },
+            { y: 0.08, z: 0.22, xShift: 0.04 },
+          ],
+        },
+        S: {
+          planeTilt: -1.05,
+          planeSize: 0.34,
+          cellContentCenterShift: 0.035, // 葡萄/樱桃组左右格子居中修正：数值越大，左格越往左、右格越往右。
+          layoutPitchRotation: Math.PI / 12,
+          columnDepthStep: 0.006,
+          columns: [-0.28, -0.13, 0.13, 0.28],
+          rotations: [
+            -0.040, -0.018, 0.018, 0.040,
+            -0.036, -0.014, 0.020, 0.044,
+            -0.032, -0.010, 0.024, 0.048,
+          ],
+          rows: [
+            { y: -0.06, z: -0.22, xShift: -0.01 },
+            { y: 0.00, z: 0.00, xShift: 0.02 },
+            { y: 0.06, z: 0.22, xShift: 0.05 },
+          ],
+        },
       };
+      const cherryGrapeStyle = cherryGrapeStylesBySize[boxSize] ?? cherryGrapeStylesBySize.M;
 
-      /* ===== 芒果放进盒子后的样式：只调芒果就改这里 =====
+      /* ===== 芒果放进盒子后的样式：按 S / M / L 分开调 =====
          planeSize：每个芒果切片大小。
-         columns：一排 3 片的位置；数值越小越靠左，越大越靠右。
+         columns：每排切片位置；L 一排 4 片，M 一排 3 片，S 一排 2 片。
          rows：一共两排。y 调上下位置，z 调前后深度，xShift 调整整排左右位置。
       */
-      const mangoStyle = {
-        planeTilt: -1.05,
-        planeSize: 0.58,
-        columnDepthStep: 0.01,
-        columns: [-0.30, 0.00, 0.30],
-        rotations: [-0.04, 0.00, 0.04, -0.03, 0.01, 0.05],
-        rows: [
-          { y: -0.07, z: -0.07, xShift: -0.02 },
-          { y: 0.05, z: 0.12, xShift: 0.04 },
-        ],
+      const mangoStylesBySize = {
+        M: {
+          planeTilt: -1.05,
+          planeSize: 0.58,
+          columnDepthStep: 0.01,
+          columns: [-0.30, 0.00, 0.30],
+          rotations: [-0.04, 0.00, 0.04, -0.03, 0.01, 0.05],
+          rows: [
+            { y: -0.07, z: -0.07, xShift: -0.02 },
+            { y: 0.05, z: 0.12, xShift: 0.04 },
+          ],
+        },
+        L: {
+          planeTilt: -1.05,
+          planeSize: 0.58,
+          columnDepthStep: 0.01,
+          columns: [-0.39, -0.13, 0.13, 0.39],
+          rotations: [-0.05, -0.018, 0.018, 0.05, -0.04, -0.010, 0.024, 0.058],
+          rows: [
+            { y: -0.07, z: -0.07, xShift: -0.02 },
+            { y: 0.05, z: 0.12, xShift: 0.04 },
+          ],
+        },
+        S: {
+          planeTilt: -1.05,
+          planeSize: 0.58,
+          columnDepthStep: 0.01,
+          columns: [-0.16, 0.16],
+          rotations: [-0.035, 0.035, -0.025, 0.045],
+          rows: [
+            { y: -0.04, z: -0.07, xShift: -0.02 },
+            { y: 0.05, z: 0.12, xShift: 0.04 },
+          ],
+        },
       };
+      const mangoStyle = mangoStylesBySize[boxSize] ?? mangoStylesBySize.M;
 
       const style = fruit.boxStyle === 'peach'
         ? peachStyle
@@ -440,10 +782,16 @@
           : fruit.boxStyle === 'mango'
             ? mangoStyle
             : defaultStyle;
+      // 左侧格子整体向左校正，右侧格子整体向右校正；部分水果组可以用自己的数值。
+      const cellCenterShift = getCellContentCenterShift(
+        cellIndex,
+        layout,
+        style.cellContentCenterShift ?? CELL_CONTENT_CENTER_SHIFT
+      );
       const columnCount = style.columns.length;
       const rawPieces = style.rows.flatMap((row, rowIndex) =>
         style.columns.map((x, columnIndex) => ({
-          x: x + row.xShift,
+          x: x + row.xShift + (style.groupXShift ?? 0),
           y: row.y,
           // 每片增加少量真实前后间距来产生视差，renderOrder 固定重叠顺序。
           z: row.z + (columnCount - 1 - columnIndex) * style.columnDepthStep,
@@ -471,7 +819,7 @@
         <group>
           {pieces.map((piece, index) => (
             <AnimatedFruitPiece
-              key={index}
+              key={`${boxSize}-${index}`}
               targetPosition={[
                 cell.x + cellCenterShift + piece.x,
                 cell.y - 0.08 + piece.y,
@@ -484,7 +832,9 @@
               pieceIndex={index}
               cellIndex={cellIndex}
               animationKey={animationKey}
+              settleKey={settleKey}
               exiting={exiting}
+              exitDuration={exitDuration}
             />
           ))}
         </group>
@@ -492,7 +842,16 @@
     }
 
     /* 格子内容替换时保留旧水果完成淡出，再切换并播放新水果的落下动画。 */
-    function FruitSlot3D({ appleId, cellIndex, animationKey }) {
+    function FruitSlot3D({
+      appleId,
+      cellIndex,
+      layout = DEFAULT_BOX_LAYOUT,
+      boxSize = 'M',
+      animationKey,
+      settleKey = 0,
+      forceExiting = false,
+      forceExitDuration = FRUIT_DROP_ANIMATION.exitDuration,
+    }) {
       const [displayedFruit, setDisplayedFruit] = useState({ appleId, animationKey });
       const [exiting, setExiting] = useState(false);
 
@@ -517,8 +876,12 @@
         <Apple3D
           appleId={displayedFruit.appleId}
           cellIndex={cellIndex}
+          layout={layout}
+          boxSize={boxSize}
           animationKey={displayedFruit.animationKey}
-          exiting={exiting}
+          settleKey={settleKey}
+          exiting={exiting || forceExiting}
+          exitDuration={forceExiting ? forceExitDuration : FRUIT_DROP_ANIMATION.exitDuration}
         />
       );
     }
@@ -750,6 +1113,56 @@
             {fruit.name} 200g
           </div>
         </ModelAlignedHtml>
+      );
+    }
+
+    function BoxNoticeLabel3D({ layout = DEFAULT_BOX_LAYOUT, noticeLabel = BOX_NOTICE_LABEL_DEFAULT }) {
+      const gl = useThree(state => state.gl);
+      const texture = useMemo(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048;
+        canvas.height = 672;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 只绘制白色字形蒙版；颜色由材质统一赋予，避免透明黑色污染字体边缘。
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '400 110px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textBaseline = 'top';
+        ['※画像はイメージです。', 'フルーツのカット数は', '重量に応じて異なります。']
+          .forEach((line, index) => ctx.fillText(line, 44, 40 + index * 176));
+
+        const map = new THREE.CanvasTexture(canvas);
+        map.minFilter = THREE.LinearMipmapLinearFilter;
+        map.magFilter = THREE.LinearFilter;
+        map.generateMipmaps = true;
+        map.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+        map.needsUpdate = true;
+        return map;
+      }, [gl]);
+
+      useEffect(() => () => texture.dispose(), [texture]);
+
+      return (
+        <mesh
+          position={[
+            noticeLabel.x,
+            noticeLabel.y,
+            layout.boxD / 2 + noticeLabel.zOffset,
+          ]}
+          renderOrder={20}
+        >
+          <planeGeometry args={[noticeLabel.width, noticeLabel.height]} />
+          <meshBasicMaterial
+            alphaMap={texture}
+            color={BOX_NOTICE_TEXT_COLOR}
+            opacity={BOX_NOTICE_TEXT_OPACITY}
+            transparent
+            alphaTest={0.012}
+            depthWrite={false}
+            toneMapped={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
       );
     }
 
@@ -1077,10 +1490,10 @@
       );
     }
 
-    function BoxActionButtons3D({ visible, onClear, onAddToCart }) {
-      const actionX = BOX_W / 2 + 0.28; // 两个按钮整体左右位置：数值越大，离盒子右边越远。
-      const actionY = CELL_Y + 0.08;    // 两个按钮整体高度：数值越大，越靠盒子开口上方。
-      const firstZ = BACK_Z - 0.45;     // 第一个按钮前后位置：数值越小，越靠屏幕上方。
+    function BoxActionButtons3D({ layout = DEFAULT_BOX_LAYOUT, visible, onClear, onAddToCart }) {
+      const actionX = layout.boxW / 2 + 0.28; // 两个按钮整体左右位置：数值越大，离盒子右边越远。
+      const actionY = layout.cellY + 0.08;    // 两个按钮整体高度：数值越大，越靠盒子开口上方。
+      const firstZ = layout.backZ - 0.45;     // 第一个按钮前后位置：数值越小，越靠屏幕上方。
       const buttonGapZ = 0.19;          // 两个按钮之间的距离：数值越大，间距越大。
 
       return (
@@ -1106,16 +1519,16 @@
     }
 
     /* 四个透明平面只负责判断鼠标正悬浮在哪个小格子，不参与画面绘制。 */
-    function CellHoverTargets({ onHoverCell }) {
-      return CELLS.map((cell, cellIndex) => (
+    function CellHoverTargets({ layout = DEFAULT_BOX_LAYOUT, onHoverCell }) {
+      return layout.cells.map((cell, cellIndex) => (
         <mesh
           key={cellIndex}
-          position={[cell.x, BOX_H / 2 + 0.08, cell.z]}
+          position={[cell.x, layout.boxH / 2 + 0.08, cell.z]}
           rotation={[-Math.PI / 2, 0, 0]}
           onPointerMove={() => onHoverCell(cellIndex)}
           onPointerOut={() => onHoverCell(null)}
         >
-          <planeGeometry args={[HOLE_W * 0.94, HOLE_D * 0.94]} />
+          <planeGeometry args={[layout.holeW * 0.94, layout.holeD * 0.94]} />
           <meshBasicMaterial
             transparent
             opacity={0}
@@ -1129,7 +1542,7 @@
 
     /* Keep the reference app's screen-quadrant drop model, but derive its bounds
        from this file's larger, lower box instead of assuming a 600x500 box. */
-    function BoxScreenTracker({ groupRef, screenRef }) {
+    function BoxScreenTracker({ groupRef, screenRef, layout = DEFAULT_BOX_LAYOUT }) {
       useFrame(({ camera, size }) => {
         if (!groupRef.current) return;
         const toScreen = (worldPos) => {
@@ -1143,16 +1556,16 @@
 
         groupRef.current.updateWorldMatrix(true, false);
 
-        const projectedCells = CELLS.map((cell) => {
+        const projectedCells = layout.cells.map((cell) => {
           const cellWorld = new THREE.Vector3(cell.x, cell.y, cell.z);
           groupRef.current.localToWorld(cellWorld);
           return toScreen(cellWorld);
         });
 
         const outerCorners = [];
-        for (const x of [-BOX_W / 2 - 0.08, BOX_W / 2 + 0.08]) {
-          for (const y of [-BOX_H / 2, BOX_H / 2 + 0.08]) {
-            for (const z of [-BOX_D / 2 - 0.08, BOX_D / 2 + 0.08]) {
+        for (const x of [-layout.boxW / 2 - 0.08, layout.boxW / 2 + 0.08]) {
+          for (const y of [-layout.boxH / 2, layout.boxH / 2 + 0.08]) {
+            for (const z of [-layout.boxD / 2 - 0.08, layout.boxD / 2 + 0.08]) {
               const corner = new THREE.Vector3(x, y, z);
               groupRef.current.localToWorld(corner);
               outerCorners.push(toScreen(corner));
@@ -1203,10 +1616,10 @@
       }, [width, height, depth, radius, topScale, yOffset, xOffset, zOffset]);
     }
 
-    function GlassCube({ transmission, roughness, ior, rotationX, glassColor, attenuationColor, envMapIntensity }) {
+    function GlassCube({ layout = DEFAULT_BOX_LAYOUT, transmission, roughness, ior, rotationX, glassColor, attenuationColor, envMapIntensity, children }) {
       const taperScale = 1.05;
-      const boxW = 2.8, boxH = 1.0, boxD = 1.8;
-      const rad = 0.15, wall = 0.04;
+      const boxW = layout.boxW, boxH = layout.boxH, boxD = layout.boxD;
+      const rad = 0.15, wall = layout.wall;
       const holeW = (boxW - 3 * wall) / 2;
       const holeD = (boxD - 3 * wall) / 2;
       const holeH = 1.0;
@@ -1276,6 +1689,8 @@
             resolution={1024}
             envMapIntensity={envMapIntensity}
           />
+          {/* 作为玻璃宿主的子节点：正常显示，但不会被 MeshTransmissionMaterial 的折射缓冲再次采样。 */}
+          {children}
         </mesh>
       );
     }
@@ -1365,7 +1780,33 @@
       const [hoveredCell, setHoveredCell] = useState(null);
       const [modelDragging, setModelDragging] = useState(false);
       const [replacementFruitId, setReplacementFruitId] = useState(null);
-      const [replacementMotionKey, setReplacementMotionKey] = useState(0);
+	      const [replacementMotionKey, setReplacementMotionKey] = useState(0);
+	      const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
+	      const [requestedSizeIndex, setRequestedSizeIndex] = useState(0);
+	      const [sizeSpinAngle, setSizeSpinAngle] = useState(0);
+	      const [displayedScreenShift, setDisplayedScreenShift] = useState(SIZE_OPTIONS[0].screenShift);
+	      const [isSizeSpinning, setIsSizeSpinning] = useState(false);
+	      const [isSizeShaking, setIsSizeShaking] = useState(false);
+	      const [sizeShakeOffsetY, setSizeShakeOffsetY] = useState(0);
+	      const [sizeShakeFruitKey, setSizeShakeFruitKey] = useState(0);
+	      const [sizeSpinFruitPhase, setSizeSpinFruitPhase] = useState('visible');
+	      const [activeCatalogTab, setActiveCatalogTab] = useState('fruit');
+	      const [openComboIndex, setOpenComboIndex] = useState(null);
+	      const [comboReplacePrompt, setComboReplacePrompt] = useState(null);
+	      const [comboReplacePromptSeen, setComboReplacePromptSeen] = useState(false);
+      const selectedSize = SIZE_OPTIONS[selectedSizeIndex];
+      const requestedSize = SIZE_OPTIONS[requestedSizeIndex];
+      const sizeTransitionActive = isSizeSpinning || isSizeShaking;
+      const selectedBoxLayout = useMemo(
+        () => createBoxLayout(selectedSize.boxWidth, selectedSize.boxDepth),
+        [selectedSize.boxWidth, selectedSize.boxDepth]
+      );
+      const selectedNoticeLabel = selectedSize.noticeLabel ?? BOX_NOTICE_LABEL_DEFAULT;
+      const selectedCellUiOffsets = CELL_UI_OFFSETS_BY_SIZE[selectedSize.size] ?? CELL_UI_OFFSETS_BY_SIZE.M;
+      const activeCatalogIndex = Math.max(0, CATALOG_TABS.findIndex(tab => tab.id === activeCatalogTab));
+      const isFruitCatalog = activeCatalogTab === 'fruit';
+      const activeCatalogItems = isFruitCatalog ? FRUIT_ITEMS : TEST_BOX_ITEMS;
+      const activeCatalogCount = activeCatalogItems.length;
       const fruitSlotWidth = 126; // 顶部水果栏单格间距：水果宽 92 + 空隙 34；也用于计算滚动位置。
       const getFruitSlots = () => Math.max(3, Math.min(FRUITS_PER_PAGE, Math.floor((window.innerWidth - 180) / 126)));
       const [fruitSlots, setFruitSlots] = useState(getFruitSlots);
@@ -1374,19 +1815,25 @@
       const [fruitStripDragging, setFruitStripDragging] = useState(false);
       const [fruitSnapDuration, setFruitSnapDuration] = useState(420);
       const [fruitEdgePull, setFruitEdgePull] = useState({ left: 0, right: 0 });
-      const maxFruitOffset = Math.max(0, FRUIT_ITEMS.length - fruitSlots);
-      const fruitViewportWidth = fruitSlots * fruitSlotWidth - 34;
-      const fruitStripTranslate = -fruitOffset * fruitSlotWidth + fruitDragDelta;
-      const liveFruitOffset = Math.max(0, Math.min(maxFruitOffset, -fruitStripTranslate / fruitSlotWidth));
-      const canScrollPrev = liveFruitOffset > 0.03;
-      const canScrollNext = liveFruitOffset < maxFruitOffset - 0.03;
-      const fruitContentWidth = FRUIT_ITEMS.length * fruitSlotWidth - 34;
+      const maxFruitOffset = Math.max(0, activeCatalogCount - fruitSlots);
+	      const fruitViewportWidth = fruitSlots * fruitSlotWidth - 34;
+	      const fruitStripTranslate = -fruitOffset * fruitSlotWidth + fruitDragDelta;
+	      const comboHoverPanelWidth = 154;
+	      const comboHoverPanelLeft = openComboIndex == null
+	        ? 0
+	        : openComboIndex * fruitSlotWidth + fruitStripTranslate + 46;
+	      const liveFruitOffset = Math.max(0, Math.min(maxFruitOffset, -fruitStripTranslate / fruitSlotWidth));
+	      const canScrollPrev = liveFruitOffset > 0.03;
+	      const canScrollNext = liveFruitOffset < maxFruitOffset - 0.03;
+      const scrollbarReferenceCount = FRUIT_ITEMS.length; // 顶部滚动条固定按“单品”数量计算，组合/履历页也保持同样的长度手感。
+      const scrollbarReferenceMaxOffset = Math.max(0, scrollbarReferenceCount - fruitSlots);
+      const fruitContentWidth = scrollbarReferenceCount * fruitSlotWidth - 34;
       const scrollbarTrackWidth = fruitViewportWidth;
-      const scrollbarThumbWidth = maxFruitOffset > 0
+      const scrollbarThumbWidth = scrollbarReferenceMaxOffset > 0
         ? Math.max(38, scrollbarTrackWidth * fruitViewportWidth / fruitContentWidth)
         : scrollbarTrackWidth;
-      const scrollbarThumbX = maxFruitOffset > 0
-        ? (scrollbarTrackWidth - scrollbarThumbWidth) * (liveFruitOffset / maxFruitOffset)
+      const scrollbarThumbX = scrollbarReferenceMaxOffset > 0
+        ? (scrollbarTrackWidth - scrollbarThumbWidth) * (liveFruitOffset / scrollbarReferenceMaxOffset)
         : 0;
 
       // Reference-style screen bounds and quadrant center for the current box transform
@@ -1404,8 +1851,17 @@
       const fruitOffsetRef = useRef(fruitOffset);
       const maxFruitOffsetRef = useRef(maxFruitOffset);
       const pendingAppleGestureRef = useRef(null);
+      const requestedSizeIndexRef = useRef(requestedSizeIndex);
+      const selectedSizeIndexRef = useRef(selectedSizeIndex);
+      const displayedScreenShiftRef = useRef(displayedScreenShift);
+      const sizeSpinRunRef = useRef({ running: false, rafId: 0 });
+      const sizeShakeRunRef = useRef({ running: false, rafId: 0 });
+      const sizeSpinFruitTimersRef = useRef([]);
       fruitOffsetRef.current = fruitOffset;
       maxFruitOffsetRef.current = maxFruitOffset;
+      requestedSizeIndexRef.current = requestedSizeIndex;
+      selectedSizeIndexRef.current = selectedSizeIndex;
+      displayedScreenShiftRef.current = displayedScreenShift;
 
       const placeAppleInCell = (prev, appleId, cell) => {
         const motionKey = nextPlacementMotionRef.current++;
@@ -1596,10 +2052,10 @@
       };
 
       // 单击水果时，按 左上 -> 右上 -> 左下 -> 右下 的顺序放进第一个空格。
-      const onAppleClick = (appleId) => {
-        if (didDragRef.current) {
-          didDragRef.current = false;
-          return;
+	      const onAppleClick = (appleId) => {
+	        if (didDragRef.current) {
+	          didDragRef.current = false;
+	          return;
         }
         const firstEmptyCell = [0, 1, 2, 3].find(cell => !placedFruits.some(a => a.cell === cell));
         if (firstEmptyCell == null) {
@@ -1611,8 +2067,48 @@
         setPlacedFruits(prev => {
           const nextEmptyCell = [0, 1, 2, 3].find(cell => !prev.some(a => a.cell === cell));
           return nextEmptyCell == null ? prev : placeAppleInCell(prev, appleId, nextEmptyCell);
-        });
-      };
+	        });
+	      };
+
+	      const placeComboInBox = (comboItem) => {
+	        const comboCells = comboItem.fruits.slice(0, 4).map((fruit, cell) => ({
+	          id: nextPlacedIdRef.current++,
+	          appleId: fruit.appleId,
+	          cell,
+	          motionKey: nextPlacementMotionRef.current++,
+	        }));
+	        setPlacedFruits(comboCells);
+	        setReplacementFruitId(null);
+	        setHoveredCell(null);
+	        setComboReplacePrompt(null);
+	        setOpenComboIndex(null);
+	      };
+
+	      const requestPlaceCombo = (comboIndex) => {
+	        const comboItem = TEST_BOX_ITEMS[comboIndex];
+	        if (!comboItem) return;
+	        if (!comboReplacePromptSeen && placedFruits.length > 0) {
+	          setComboReplacePrompt({ comboIndex });
+	          setComboReplacePromptSeen(true);
+	          return;
+	        }
+	        placeComboInBox(comboItem);
+	      };
+
+	      const onComboCardClick = (e, comboIndex) => {
+	        e.stopPropagation();
+	        if (fruitStripDragging || didDragRef.current) {
+	          didDragRef.current = false;
+	          return;
+	        }
+	        if (openComboIndex === comboIndex) {
+	          setOpenComboIndex(null);
+	          setComboReplacePrompt(null);
+	          return;
+	        }
+	        setOpenComboIndex(comboIndex);
+	        setReplacementFruitId(null);
+	      };
 
       useEffect(() => {
         window.addEventListener('pointermove', onWindowMove);
@@ -1635,10 +2131,263 @@
         setFruitOffset(offset => Math.min(offset, maxFruitOffset));
       }, [maxFruitOffset]);
 
+      useEffect(() => {
+        sizeSpinFruitTimersRef.current.forEach(clearTimeout);
+        sizeSpinFruitTimersRef.current = [];
+
+        if (!isSizeSpinning) {
+          // hidden -> visible 会重新挂载切片，从而重播各自的掉落和反弹动画。
+          setSizeSpinFruitPhase('visible');
+          return undefined;
+        }
+
+        if (placedFruits.length === 0) return undefined;
+
+        setSizeSpinFruitPhase('visible');
+        const fadeTimer = setTimeout(() => {
+          setSizeSpinFruitPhase('fading');
+        }, SIZE_SPIN_FRUIT_ANIMATION.hideDelayMs);
+        const hideTimer = setTimeout(() => {
+          setSizeSpinFruitPhase('hidden');
+        }, SIZE_SPIN_FRUIT_ANIMATION.hideDelayMs + SIZE_SPIN_FRUIT_ANIMATION.fadeDuration * 1000);
+        sizeSpinFruitTimersRef.current = [fadeTimer, hideTimer];
+
+        return () => {
+          sizeSpinFruitTimersRef.current.forEach(clearTimeout);
+          sizeSpinFruitTimersRef.current = [];
+        };
+      }, [isSizeSpinning]);
+
+      useEffect(() => {
+        if (!isSizeShaking || sizeShakeRunRef.current.running) return undefined;
+        const run = sizeShakeRunRef.current;
+        Object.assign(run, {
+          running: true,
+          cycleStart: performance.now(),
+          startScreenShift: displayedScreenShiftRef.current,
+          switched: false,
+        });
+
+        const tick = (now) => {
+          const elapsed = now - run.cycleStart;
+          const t = THREE.MathUtils.clamp(elapsed / SIZE_CHANGE_SHAKE.duration, 0, 1);
+          const smooth = (value) => value * value * (3 - 2 * value);
+          const latestTargetIndex = requestedSizeIndexRef.current;
+          const targetOption = SIZE_OPTIONS[latestTargetIndex];
+          const shakeMotion = {
+            downDistance: SIZE_CHANGE_SHAKE.downDistance,
+            reboundDistance: SIZE_CHANGE_SHAKE.reboundDistance,
+            settleDistance: SIZE_CHANGE_SHAKE.settleDistance,
+            ...(targetOption.shakeMotion ?? {}),
+          };
+          let offsetY = 0;
+          if (t < SIZE_CHANGE_SHAKE.switchAt) {
+            const rawPhase = t / SIZE_CHANGE_SHAKE.switchAt;
+            const phase = 1 - Math.pow(1 - rawPhase, 2);
+            offsetY = THREE.MathUtils.lerp(0, -shakeMotion.downDistance, phase);
+          } else if (t < 0.54) {
+            const phase = smooth((t - SIZE_CHANGE_SHAKE.switchAt) / (0.54 - SIZE_CHANGE_SHAKE.switchAt));
+            offsetY = THREE.MathUtils.lerp(-shakeMotion.downDistance, shakeMotion.reboundDistance, phase);
+          } else if (t < 0.76) {
+            const phase = smooth((t - 0.54) / (0.76 - 0.54));
+            offsetY = THREE.MathUtils.lerp(shakeMotion.reboundDistance, -shakeMotion.settleDistance, phase);
+          } else {
+            const phase = smooth((t - 0.76) / (1 - 0.76));
+            offsetY = THREE.MathUtils.lerp(-shakeMotion.settleDistance, 0, phase);
+          }
+          setSizeShakeOffsetY(offsetY);
+
+          const finalScreenShiftForTarget = targetOption.screenShift ?? 0.17;
+          const switchScreenShiftForTarget = targetOption.switchScreenShift;
+          let currentScreenShift;
+          if (switchScreenShiftForTarget != null && t >= SIZE_CHANGE_SHAKE.switchAt) {
+            // 切成 S 的一瞬间先给一个更低的起始位置，再回到 S 的最终位置；
+            // 这样从 L 切到 S 时不会继承 L 的高位置，也不会在结束时闪回。
+            const shiftEase = (t - SIZE_CHANGE_SHAKE.switchAt) / (1 - SIZE_CHANGE_SHAKE.switchAt);
+            currentScreenShift = THREE.MathUtils.lerp(
+              switchScreenShiftForTarget,
+              finalScreenShiftForTarget,
+              shiftEase,
+            );
+          } else {
+            const shiftEase = t;
+            currentScreenShift = THREE.MathUtils.lerp(
+              run.startScreenShift,
+              finalScreenShiftForTarget,
+              shiftEase,
+            );
+          }
+          displayedScreenShiftRef.current = currentScreenShift;
+          setDisplayedScreenShift(currentScreenShift);
+
+          if (!run.switched && t >= SIZE_CHANGE_SHAKE.switchAt) {
+            run.switched = true;
+            if (selectedSizeIndexRef.current !== latestTargetIndex) {
+              selectedSizeIndexRef.current = latestTargetIndex;
+              setSelectedSizeIndex(latestTargetIndex);
+            }
+            // 水果保持可见，从最低点开始被盒子回弹托起，再各自落回格子。
+            setSizeShakeFruitKey(key => key + 1);
+          }
+
+          if (t < 1) {
+            run.rafId = requestAnimationFrame(tick);
+            return;
+          }
+
+          // 用户在本轮切换点之后又选了新尺寸，就再做一次下沉回弹。
+          if (selectedSizeIndexRef.current !== requestedSizeIndexRef.current) {
+            run.cycleStart = now;
+            run.startScreenShift = displayedScreenShiftRef.current;
+            run.switched = false;
+            run.rafId = requestAnimationFrame(tick);
+            return;
+          }
+
+          const finalScreenShift = SIZE_OPTIONS[requestedSizeIndexRef.current].screenShift ?? 0.17;
+          displayedScreenShiftRef.current = finalScreenShift;
+          setDisplayedScreenShift(finalScreenShift);
+          setSizeShakeOffsetY(0);
+          run.running = false;
+          setIsSizeShaking(false);
+        };
+
+        run.rafId = requestAnimationFrame(tick);
+        return () => {
+          cancelAnimationFrame(sizeShakeRunRef.current.rafId);
+          sizeShakeRunRef.current.running = false;
+        };
+      }, [isSizeShaking]);
+
+      useEffect(() => {
+        if (!isSizeSpinning || sizeSpinRunRef.current.running) return undefined;
+        const run = sizeSpinRunRef.current;
+        Object.assign(run, {
+          running: true,
+          progressTurns: 0,
+          totalTurns: SIZE_CHANGE_SPIN.turns,
+          velocityTurnsPerMs: 0,
+          lastTime: performance.now(),
+          nextSwitchTurn: SIZE_CHANGE_SPIN.switchAt,
+          switchedThisTurn: false,
+        });
+
+        const tick = (now) => {
+          const dt = Math.min(48, Math.max(1, now - run.lastTime));
+          run.lastTime = now;
+
+          const remainingTurns = Math.max(0, run.totalTurns - run.progressTurns);
+          const cruiseSpeed = 1 / SIZE_CHANGE_SPIN.cruiseMsPerTurn;
+          const decelRatio = Math.min(1, remainingTurns / SIZE_CHANGE_SPIN.continueDecelTurns);
+          const desiredSpeed = remainingTurns <= SIZE_CHANGE_SPIN.continueDecelTurns
+            // 平方根减速曲线接近真实制动：开始减速自然，最终停下也不会突然截断。
+            ? cruiseSpeed * Math.sqrt(decelRatio)
+            : cruiseSpeed;
+          const responseMs = desiredSpeed > run.velocityTurnsPerMs
+            ? SIZE_CHANGE_SPIN.accelMs
+            : SIZE_CHANGE_SPIN.decelMs;
+          const velocityMix = Math.min(1, dt / responseMs);
+          run.velocityTurnsPerMs += (desiredSpeed - run.velocityTurnsPerMs) * velocityMix;
+          if (remainingTurns <= SIZE_CHANGE_SPIN.continueDecelTurns) {
+            // 不允许惯性速度超过当前剩余距离可承受的制动速度，避免最后一帧硬停。
+            run.velocityTurnsPerMs = Math.min(run.velocityTurnsPerMs, desiredSpeed);
+          }
+          run.progressTurns = Math.min(
+            run.totalTurns,
+            run.progressTurns + run.velocityTurnsPerMs * dt
+          );
+
+          while (run.progressTurns >= run.nextSwitchTurn) {
+            const latestTargetIndex = requestedSizeIndexRef.current;
+            const latestScreenShift = SIZE_OPTIONS[latestTargetIndex].screenShift ?? 0.17;
+
+            if (selectedSizeIndexRef.current !== latestTargetIndex) {
+              selectedSizeIndexRef.current = latestTargetIndex;
+              setSelectedSizeIndex(latestTargetIndex);
+            }
+            displayedScreenShiftRef.current = latestScreenShift;
+            setDisplayedScreenShift(latestScreenShift);
+            run.nextSwitchTurn = Math.floor(run.nextSwitchTurn) + 1 + SIZE_CHANGE_SPIN.switchAt;
+          }
+
+          const targetScreenShift =
+            SIZE_OPTIONS[requestedSizeIndexRef.current].screenShift ?? 0.17;
+          const shiftMix = Math.min(1, dt / SIZE_CHANGE_SPIN.screenShiftFollowMs);
+          const currentScreenShift =
+            displayedScreenShiftRef.current +
+            (targetScreenShift - displayedScreenShiftRef.current) * shiftMix;
+          displayedScreenShiftRef.current = currentScreenShift;
+          setDisplayedScreenShift(currentScreenShift);
+          const currentTurn = Math.floor(run.progressTurns);
+          run.switchedThisTurn = run.progressTurns >= currentTurn + SIZE_CHANGE_SPIN.switchAt;
+          setSizeSpinAngle(
+            SIZE_CHANGE_SPIN.direction *
+            Math.PI * 2 *
+            run.progressTurns
+          );
+
+          const remainingAfterFrame = run.totalTurns - run.progressTurns;
+          const reachedFinalStop = remainingAfterFrame <= 0.0001;
+
+          if (!reachedFinalStop) {
+            run.rafId = requestAnimationFrame(tick);
+            return;
+          }
+
+          // 极少数情况下，点击可能刚好发生在最后一帧；只在终点仍有新目标时补一圈。
+          // 不能在前半圈按“尺寸尚未切换”来补圈，否则普通单击也会被误判成两圈。
+          if (selectedSizeIndexRef.current !== requestedSizeIndexRef.current) {
+            run.totalTurns += SIZE_CHANGE_SPIN.turns;
+            run.rafId = requestAnimationFrame(tick);
+            return;
+          }
+
+          const finalScreenShift =
+            SIZE_OPTIONS[requestedSizeIndexRef.current].screenShift ?? 0.17;
+          displayedScreenShiftRef.current = finalScreenShift;
+          setDisplayedScreenShift(finalScreenShift);
+          setSizeSpinAngle(0);
+          run.running = false;
+          setIsSizeSpinning(false);
+        };
+
+        run.rafId = requestAnimationFrame(tick);
+        return () => {
+          cancelAnimationFrame(sizeSpinRunRef.current.rafId);
+          sizeSpinRunRef.current.running = false;
+        };
+      }, [isSizeSpinning]);
+
       const unsnapApple = (id) => {
         setPlacedFruits(prev => prev.filter(a => a.id !== id));
         setReplacementFruitId(null);
         setHoveredCell(null);
+      };
+
+      const startSizeChange = () => {
+        setHoveredCell(null);
+        setReplacementFruitId(null);
+        setRequestedSizeIndex((index) => {
+          const nextIndex = (index + 1) % SIZE_OPTIONS.length;
+          requestedSizeIndexRef.current = nextIndex;
+          /*
+            备用旧方案：整圈旋转切换尺寸。
+            现在空盒和有水果都统一走下面的“下沉 -> 回弹”动画，所以这里暂时不调用。
+            if (sizeSpinRunRef.current.running) {
+              const run = sizeSpinRunRef.current;
+              const currentTurn = Math.floor(run.progressTurns ?? 0);
+              const alreadySwitchedThisTurn =
+                (run.progressTurns ?? 0) >= currentTurn + SIZE_CHANGE_SPIN.switchAt;
+              const requiredTurns = alreadySwitchedThisTurn
+                ? currentTurn + 1 + SIZE_CHANGE_SPIN.turns
+                : currentTurn + SIZE_CHANGE_SPIN.turns;
+              run.totalTurns = Math.max(run.totalTurns ?? SIZE_CHANGE_SPIN.turns, requiredTurns);
+            }
+          */
+          return nextIndex;
+        });
+        // 统一尺寸切换动画：空盒也不再转一圈，只做一次利落的下沉回弹。
+        setIsSizeShaking(true);
       };
 
       const replaceFruitInCell = (cell) => {
@@ -1653,15 +2402,17 @@
         setHoveredCell(null);
       };
 
-      const clearAllFruits = () => {
-        setPlacedFruits([]);
-        setReplacementFruitId(null);
-        setHoveredCell(null);
-      };
+	      const clearAllFruits = () => {
+	        setPlacedFruits([]);
+	        setReplacementFruitId(null);
+	        setHoveredCell(null);
+	        setOpenComboIndex(null);
+	        setComboReplacePrompt(null);
+	      };
 
-      const addBoxToCart = () => {
-        setReplacementFruitId(null);
-        setHoveredCell(null);
+	      const addBoxToCart = () => {
+	        setReplacementFruitId(null);
+	        setHoveredCell(null);
       };
 
       const turnFruitPage = (direction) => {
@@ -1685,56 +2436,82 @@
         finishFruitStripDrag(e);
       };
 
-      return (
-        <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#F7F8FA', position: 'relative' }}>
+	      return (
+	        <div
+	          onPointerDown={() => {
+	            setOpenComboIndex(null);
+	            setComboReplacePrompt(null);
+	          }}
+	          style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#F7F8FA', position: 'relative' }}
+	        >
           <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
-            <ViewOffset shift={0.17} />
+            <ViewOffset shift={displayedScreenShift} />
             <color attach="background" args={['#F7F8FA']} />
             <ambientLight intensity={lightIntensity * 0.25} />
             <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
             <spotLight position={[-10, 10, -10]} angle={0.3} penumbra={1} intensity={lightIntensity * 0.6} color="#e0eaff" />
             <Suspense fallback={null}>
-              {/* HTML 文字需要稳定的像素位置：盒子不再自动上下漂浮，手动旋转保持不变。 */}
-              <group ref={groupRef} rotation={[rotationX, 0, 0]} scale={1.55}>
+              {/* 公共父组统一移动盒体、水果和按钮；内部组只负责模型旋转和尺寸。 */}
+              <group position={[0, sizeShakeOffsetY, 0]}>
+                <group
+                  ref={groupRef}
+                  rotation={[rotationX + sizeSpinAngle, 0, 0]}
+                  scale={1.55}
+                >
                   <GlassCube
+                    key={`glass-${selectedSize.size}`}
+                    layout={selectedBoxLayout}
                     transmission={transmission}
                     roughness={roughness}
                     ior={ior}
                     glassColor={glassColor}
                     attenuationColor={attenuationColor}
                     envMapIntensity={envMapIntensity}
-                  />
-                  <CellHoverTargets onHoverCell={setHoveredCell} />
+                  >
+                    <BoxNoticeLabel3D layout={selectedBoxLayout} noticeLabel={selectedNoticeLabel} />
+                  </GlassCube>
+                  <CellHoverTargets layout={selectedBoxLayout} onHoverCell={setHoveredCell} />
                   {placedFruits.map(a => (
                     <group key={a.id}>
-                      <FruitSlot3D appleId={a.appleId} cellIndex={a.cell} animationKey={a.motionKey} />
+                      {sizeSpinFruitPhase !== 'hidden' ? (
+                        <FruitSlot3D
+                          appleId={a.appleId}
+                          cellIndex={a.cell}
+                          layout={selectedBoxLayout}
+                          boxSize={selectedSize.size}
+                          animationKey={a.motionKey}
+                          settleKey={sizeShakeFruitKey}
+                          forceExiting={sizeSpinFruitPhase === 'fading'}
+                          forceExitDuration={SIZE_SPIN_FRUIT_ANIMATION.fadeDuration}
+                        />
+                      ) : null}
                       <CellInfoLabel3D
                         position={[
-                          CELLS[a.cell].x + getCellContentCenterShift(a.cell) + CELL_INFO_LABEL_OFFSET.x,
-                          CELLS[a.cell].y + CELL_INFO_LABEL_OFFSET.y,
-                          CELLS[a.cell].z + CELL_INFO_LABEL_OFFSET.z,
+                          selectedBoxLayout.cells[a.cell].x + getCellContentCenterShift(a.cell, selectedBoxLayout) + selectedCellUiOffsets.info.x,
+                          selectedBoxLayout.cells[a.cell].y + selectedCellUiOffsets.info.y,
+                          selectedBoxLayout.cells[a.cell].z + selectedCellUiOffsets.info.z,
                         ]}
                         appleId={a.appleId}
-                        visible={replacementFruitId == null && !modelDragging && hoveredCell === a.cell}
+                        visible={replacementFruitId == null && !modelDragging && !sizeTransitionActive && hoveredCell === a.cell}
                         hideDelay={modelDragging ? CELL_INFO_PRESS_HIDE_DELAY : CELL_INFO_HOVER_HIDE_DELAY}
                         transitionMs={modelDragging ? CELL_INFO_PRESS_TRANSITION_MS : CELL_INFO_HOVER_TRANSITION_MS}
                       />
                       <CloseButton3D
                         position={[
-                          CELLS[a.cell].x + 0.56,
-                          CELLS[a.cell].y + 0.08,
-                          CELLS[a.cell].z - 0.32,
+                          selectedBoxLayout.cells[a.cell].x + selectedCellUiOffsets.close.x,
+                          selectedBoxLayout.cells[a.cell].y + selectedCellUiOffsets.close.y,
+                          selectedBoxLayout.cells[a.cell].z + selectedCellUiOffsets.close.z,
                         ]}
-                        visible={replacementFruitId == null && !modelDragging && hoveredCell === a.cell}
+                        visible={replacementFruitId == null && !modelDragging && !sizeTransitionActive && hoveredCell === a.cell}
                         hideDelay={modelDragging ? PRESS_HIDE_START_DELAY : CELL_CLOSE_HOVER_HIDE_DELAY}
                         dismissDamp={modelDragging ? PRESS_ROUND_BUTTON_DISMISS_DAMP : CELL_CLOSE_HOVER_DISMISS_DAMP}
                         onRemove={() => unsnapApple(a.id)}
                       />
                       <ReplaceButton3D
                         position={[
-                          CELLS[a.cell].x + getCellContentCenterShift(a.cell),
-                          CELLS[a.cell].y + 0.10,
-                          CELLS[a.cell].z - 0.02,
+                          selectedBoxLayout.cells[a.cell].x + getCellContentCenterShift(a.cell, selectedBoxLayout),
+                          selectedBoxLayout.cells[a.cell].y + 0.10,
+                          selectedBoxLayout.cells[a.cell].z - 0.02,
                         ]}
                         visible={replacementFruitId != null}
                         animationKey={replacementMotionKey}
@@ -1743,17 +2520,19 @@
                     </group>
                   ))}
                   <CancelReplacementButton3D
-                    position={[RIGHT_X + 0.56, CELL_Y + 0.08, BACK_Z - 0.32]}
+                    position={[selectedBoxLayout.rightX + 0.56, selectedBoxLayout.cellY + 0.08, selectedBoxLayout.backZ - 0.32]}
                     visible={replacementFruitId != null}
                     onCancel={cancelReplacement}
                   />
                   <BoxActionButtons3D
+                    layout={selectedBoxLayout}
                     visible={!modelDragging}
                     onClear={clearAllFruits}
                     onAddToCart={addBoxToCart}
                   />
+                </group>
               </group>
-              <BoxScreenTracker groupRef={groupRef} screenRef={boxScreenRef} />
+              <BoxScreenTracker groupRef={groupRef} screenRef={boxScreenRef} layout={selectedBoxLayout} />
               <AutoReturn easeSpeed={0.15} />
               <Environment preset="warehouse" />
             </Suspense>
@@ -1781,7 +2560,7 @@
               top: 0,
               width: '100%',
               height: 76,
-              background: '#ffffff',
+              background: '#F7F8FA',
               zIndex: 20,
               display: 'flex',
               alignItems: 'center',
@@ -1807,7 +2586,7 @@
               display: 'flex',
               alignItems: 'flex-start',
               gap: 24,
-              zIndex: 25,
+	              zIndex: 35,
               width: 'min(1580px, calc(100vw - 104px))',
               justifyContent: 'center',
               userSelect: 'none',
@@ -1844,21 +2623,29 @@
               <div style={{ width: 30, height: 30, marginTop: 22 }} />
             )}
 
-            <div
-              onPointerDown={onFruitStripPointerDown}
-              style={{
-                width: fruitViewportWidth,
-                overflow: 'hidden',
-                position: 'relative',
-                paddingBottom: 10, // 给水果名称和下方滚动条留出间距，避免文字压住滚动条。
-                cursor: fruitStripDragging ? 'grabbing' : 'grab',
-                touchAction: 'pan-y',
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${FRUIT_ITEMS.length}, 92px)`,
+	            <div
+	              onPointerDown={onFruitStripPointerDown}
+	              style={{
+	                width: fruitViewportWidth,
+	                overflow: 'visible',
+	                position: 'relative',
+	                paddingBottom: 10, // 给水果名称和下方滚动条留出间距，避免文字压住滚动条。
+	                cursor: fruitStripDragging ? 'grabbing' : 'grab',
+	                touchAction: 'pan-y',
+	              }}
+	            >
+	              <div
+	                style={{
+	                  width: fruitViewportWidth,
+	                  height: 94,
+	                  overflow: 'hidden',
+	                  position: 'relative',
+	                }}
+	              >
+	              <div
+	                style={{
+	                  display: 'grid',
+	                  gridTemplateColumns: `repeat(${activeCatalogCount}, 92px)`,
                   gap: 34,
                   transform: `translateX(${fruitStripTranslate}px)`,
                   transition: fruitStripDragging ? 'none' : `transform ${fruitSnapDuration}ms cubic-bezier(0.16, 1, 0.3, 1)`,
@@ -1866,47 +2653,217 @@
                   overflow: 'visible',
                 }}
               >
-                {FRUIT_ITEMS.map((fruit, id) => (
-                  <button
-                    key={fruit.name}
-                    type="button"
-                    onPointerDown={(e) => onApplePointerDown(e, id)}
-                    onClick={() => onAppleClick(id)}
-                    onContextMenu={(e) => e.preventDefault()}
-                    style={{
-                      width: 92,
-                      padding: 0,
-                      border: 0,
-                      background: 'transparent',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: 'grab',
-                      userSelect: 'none',
-                      touchAction: 'none',
-                      font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
-                      color: '#111',
-                    }}
-                    aria-label={fruit.name}
-                  >
-                    <img
-                      src={fruit.wholeSrc}
-                      draggable={false}
+                {isFruitCatalog ? (
+                  FRUIT_ITEMS.map((fruit, id) => (
+                    <button
+                      key={fruit.name}
+                      type="button"
+                      onPointerDown={(e) => onApplePointerDown(e, id)}
+                      onClick={() => onAppleClick(id)}
                       onContextMenu={(e) => e.preventDefault()}
                       style={{
-                        width: 68,
-                        height: 68,
-                        objectFit: 'contain',
-                        pointerEvents: 'none',
-                        WebkitUserDrag: 'none',
+                        width: 92,
+                        padding: 0,
+                        border: 0,
+                        background: 'transparent',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        cursor: 'grab',
+                        userSelect: 'none',
+                        touchAction: 'none',
+                        font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+                        color: '#111',
                       }}
-                      alt=""
-                    />
-                    <span style={{ marginTop: 8, whiteSpace: 'nowrap' }}>{fruit.name}</span>
-                  </button>
-                ))}
-              </div>
-              <div
+                      aria-label={fruit.name}
+                    >
+                      <img
+                        src={fruit.wholeSrc}
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{
+                          width: 68,
+                          height: 68,
+                          objectFit: 'contain',
+                          pointerEvents: 'none',
+                          WebkitUserDrag: 'none',
+                        }}
+                        alt=""
+                      />
+                      <span style={{ marginTop: 8, whiteSpace: 'nowrap' }}>{fruit.name}</span>
+                    </button>
+                  ))
+	                ) : (
+	                  activeCatalogItems.map((item, index) => {
+	                    const activeCombo = openComboIndex === index;
+	                    return (
+		                    <div
+		                      key={`${activeCatalogTab}-${index}`}
+		                      data-combo-ui="true"
+		                      onPointerDown={(e) => e.stopPropagation()}
+		                      onClick={(e) => onComboCardClick(e, index)}
+		                      style={{
+		                        width: 92,
+		                        height: 94,
+		                        position: 'relative',
+	                        display: 'flex',
+	                        flexDirection: 'column',
+	                        alignItems: 'center',
+		                        userSelect: 'none',
+		                        font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+		                        color: '#111',
+		                        cursor: 'pointer',
+		                        zIndex: activeCombo ? 80 : 1,
+		                      }}
+		                    >
+	                      <img
+	                        src={item.imageSrc}
+	                        draggable={false}
+	                        onContextMenu={(e) => e.preventDefault()}
+	                        style={{
+	                          width: 76,
+	                          height: 68,
+	                          objectFit: 'contain',
+	                          pointerEvents: 'none',
+	                          WebkitUserDrag: 'none',
+	                          position: 'relative',
+	                          zIndex: 1,
+	                        }}
+	                        alt=""
+	                      />
+	                      <span
+	                        style={{
+	                          marginTop: 8,
+	                          whiteSpace: 'nowrap',
+	                          font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+	                          position: 'relative',
+	                          zIndex: 1,
+	                        }}
+	                      >
+	                        {item.name}
+	                      </span>
+	                    </div>
+	                  );
+	                  })
+	                )}
+	              </div>
+	              </div>
+	              {!isFruitCatalog && openComboIndex != null && activeCatalogItems[openComboIndex] ? (
+	                <div
+	                  data-combo-ui="true"
+	                  onPointerDown={(e) => e.stopPropagation()}
+	                  onClick={(e) => onComboCardClick(e, openComboIndex)}
+	                  style={{
+	                    position: 'absolute',
+	                    left: comboHoverPanelLeft,
+	                    top: -18,
+	                    width: comboHoverPanelWidth,
+	                    minHeight: 266,
+	                    padding: '0 16px 8px',
+	                    borderRadius: 22,
+	                    background: '#ffffff',
+	                    boxSizing: 'border-box',
+	                    transform: 'translateX(-50%)',
+	                    zIndex: 90,
+	                    cursor: 'pointer',
+	                  }}
+	                >
+	                  <img
+		                    src={activeCatalogItems[openComboIndex].imageSrc}
+		                    draggable={false}
+		                    alt=""
+		                    style={{
+		                      width: 76,
+		                      height: 68,
+		                      objectFit: 'contain',
+		                      display: 'block',
+		                      margin: '18px auto 0',
+		                      pointerEvents: 'none',
+		                      WebkitUserDrag: 'none',
+		                    }}
+		                  />
+		                  <div
+		                    style={{
+		                      marginTop: 8,
+		                      textAlign: 'center',
+		                      whiteSpace: 'nowrap',
+		                      font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+	                      color: '#111111',
+	                    }}
+	                  >
+		                    {activeCatalogItems[openComboIndex].name}
+	                  </div>
+		                  <div
+		                    style={{
+		                      width: '100%',
+		                      marginTop: 14,
+		                      display: 'grid',
+		                      gap: 6,
+	                    }}
+	                  >
+	                    {activeCatalogItems[openComboIndex].fruits.map((fruit, fruitIndex) => (
+	                      <div
+	                        key={`${activeCatalogItems[openComboIndex].name}-${fruitIndex}`}
+	                        style={{
+	                          display: 'grid',
+	                          gridTemplateColumns: '22px minmax(0, 1fr)',
+	                          alignItems: 'center',
+	                          columnGap: 8,
+	                          minWidth: 0,
+	                        }}
+	                      >
+	                        <img
+	                          src={fruit.iconSrc}
+	                          draggable={false}
+	                          alt=""
+	                          style={{
+	                            width: 22,
+	                            height: 22,
+	                            objectFit: 'contain',
+	                            pointerEvents: 'none',
+	                            WebkitUserDrag: 'none',
+	                          }}
+	                        />
+	                        <span
+	                          style={{
+	                            minWidth: 0,
+	                            overflow: 'hidden',
+	                            textOverflow: 'ellipsis',
+	                            whiteSpace: 'nowrap',
+	                            font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
+	                            color: '#111111',
+	                          }}
+	                        >
+	                          {fruit.name}
+	                        </span>
+	                      </div>
+	                    ))}
+	                  </div>
+	                  <button
+	                    type="button"
+	                    onPointerDown={(e) => e.stopPropagation()}
+	                    onClick={(e) => {
+	                      e.stopPropagation();
+	                      requestPlaceCombo(openComboIndex);
+	                    }}
+	                    style={{
+	                      display: 'block',
+	                      margin: '10px auto 2px',
+	                      padding: '9px 16px',
+	                      border: 0,
+	                      borderRadius: 999,
+	                      background: '#050505',
+	                      color: '#ffffff',
+	                      font: '600 12px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+	                      cursor: 'pointer',
+	                      whiteSpace: 'nowrap',
+	                    }}
+	                  >
+	                    ボックスに追加
+	                  </button>
+	                </div>
+	              ) : null}
+	              <div
                 style={{
                   position: 'absolute',
                   left: 0,
@@ -2000,7 +2957,204 @@
             )}
           </div>
 
-          {dragClone && (
+          <div
+            role="tablist"
+            aria-label="商品カテゴリ"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: CATALOG_SWITCH_STYLE.top,
+              width: CATALOG_SWITCH_STYLE.width,
+              height: CATALOG_SWITCH_STYLE.height,
+              transform: 'translateX(-50%)',
+              border: 0,
+              borderRadius: 999,
+              overflow: 'hidden',
+              background: '#F7F8FA',
+              zIndex: 26,
+              userSelect: 'none',
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                pointerEvents: 'none',
+              }}
+            >
+              {CATALOG_TABS.map((tab, index) => (
+                <div
+                  key={`base-${tab.id}`}
+                  style={{
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderLeft: 0,
+                    color: '#111111',
+                    font: `500 ${CATALOG_SWITCH_STYLE.fontSize}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                    letterSpacing: 0,
+                  }}
+                >
+                  {tab.label}
+                </div>
+              ))}
+            </div>
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${100 / CATALOG_TABS.length}%`,
+                background: '#111111',
+                overflow: 'hidden',
+                borderRadius: 999,
+                transform: `translateX(${activeCatalogIndex * 100}%)`,
+                transition: 'transform 320ms cubic-bezier(.2,.8,.2,1)',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  width: CATALOG_SWITCH_STYLE.width,
+                  height: '100%',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  transform: `translateX(${-activeCatalogIndex * (CATALOG_SWITCH_STYLE.width / CATALOG_TABS.length)}px)`,
+                  transition: 'transform 320ms cubic-bezier(.2,.8,.2,1)',
+                }}
+              >
+                {CATALOG_TABS.map(tab => (
+                  <div
+                    key={`mask-${tab.id}`}
+                    style={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: '#ffffff',
+                      font: `500 ${CATALOG_SWITCH_STYLE.fontSize}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                      letterSpacing: 0,
+                    }}
+                  >
+                    {tab.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+              }}
+            >
+            {CATALOG_TABS.map((tab, index) => {
+              const active = activeCatalogTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    if (activeCatalogTab === tab.id) return;
+                    setActiveCatalogTab(tab.id);
+	                    setFruitSnapDuration(260);
+	                    setFruitOffset(0);
+	                    setFruitDragDelta(0);
+	                    setFruitEdgePull({ left: 0, right: 0 });
+	                    setOpenComboIndex(null);
+	                    setComboReplacePrompt(null);
+	                    setReplacementFruitId(null);
+	                  }}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: 'transparent',
+                    font: `500 ${CATALOG_SWITCH_STYLE.fontSize}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                    letterSpacing: 0,
+                    cursor: 'pointer',
+                    padding: 0,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+	            </div>
+	          </div>
+
+	          {comboReplacePrompt ? (
+	            <div
+	              onPointerDown={(e) => e.stopPropagation()}
+	              style={{
+	                position: 'absolute',
+	                left: '50%',
+	                top: CATALOG_SWITCH_STYLE.top + CATALOG_SWITCH_STYLE.height + 18,
+	                transform: 'translateX(-50%)',
+	                width: 248,
+	                padding: '18px 18px 16px',
+	                borderRadius: 18,
+	                background: '#ffffff',
+	                boxSizing: 'border-box',
+	                zIndex: 120,
+	                color: '#111111',
+	                font: '500 13px/1.55 -apple-system, BlinkMacSystemFont, sans-serif',
+	                textAlign: 'center',
+	              }}
+	            >
+	              <div>
+	                現在のボックスの中身を
+	                <br />
+	                このセットに入れ替えますか？
+	              </div>
+	              <div
+	                style={{
+	                  display: 'flex',
+	                  justifyContent: 'center',
+	                  gap: 8,
+	                  marginTop: 14,
+	                }}
+	              >
+	                <button
+	                  type="button"
+	                  onClick={() => placeComboInBox(TEST_BOX_ITEMS[comboReplacePrompt.comboIndex])}
+	                  style={{
+	                    border: 0,
+	                    borderRadius: 999,
+	                    background: '#111111',
+	                    color: '#ffffff',
+	                    padding: '7px 14px',
+	                    font: '500 12px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+	                    cursor: 'pointer',
+	                  }}
+	                >
+	                  入れ替える
+	                </button>
+	                <button
+	                  type="button"
+	                  onClick={() => setComboReplacePrompt(null)}
+	                  style={{
+	                    border: 0,
+	                    borderRadius: 999,
+	                    background: '#F7F8FA',
+	                    color: '#111111',
+	                    padding: '7px 14px',
+	                    font: '500 12px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+	                    cursor: 'pointer',
+	                  }}
+	                >
+	                  キャンセル
+	                </button>
+	              </div>
+	            </div>
+	          ) : null}
+
+	          {dragClone && (
             <img
               src={FRUIT_ITEMS[dragClone.appleId].wholeSrc}
               draggable={false}
@@ -2019,6 +3173,130 @@
               alt=""
             />
           )}
+
+          <button
+            type="button"
+            aria-label={`サイズ ${requestedSize.size} ${requestedSize.weight}`}
+            onClick={startSizeChange}
+            style={{
+              position: 'absolute',
+              left: SIZE_SELECTOR_POSITION.left,
+              bottom: SIZE_SELECTOR_POSITION.bottom,
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              color: '#000000',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: SIZE_SELECTOR_TEXT_STYLE.gap,
+              cursor: 'pointer',
+              zIndex: 40,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span
+              style={{
+                font: `400 ${SIZE_SELECTOR_TEXT_STYLE.labelFont}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                letterSpacing: 0,
+                transform: `translateY(${PAGE_CART_TEXT_STYLE.textOffsetY}px)`,
+              }}
+            >
+              (size)
+            </span>
+            <span
+              style={{
+                width: SIZE_SELECTOR_CARD_SIZE.width,
+                height: SIZE_SELECTOR_CARD_SIZE.height,
+                border: '1.4px solid #000000',
+                borderRadius: 16,
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
+              }}
+            >
+              <span
+                style={{
+                  font: `600 ${SIZE_SELECTOR_TEXT_STYLE.sizeFont}px/0.82 -apple-system, BlinkMacSystemFont, sans-serif`,
+                  letterSpacing: 0,
+                }}
+              >
+                {requestedSize.size}
+              </span>
+              <span
+                style={{
+                  marginTop: SIZE_SELECTOR_TEXT_STYLE.weightGap,
+                  font: `400 ${SIZE_SELECTOR_TEXT_STYLE.weightFont}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                  letterSpacing: 0,
+                }}
+              >
+                {requestedSize.weight}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="カート"
+            onClick={addBoxToCart}
+            style={{
+              position: 'absolute',
+              right: PAGE_CART_POSITION.right,
+              bottom: PAGE_CART_POSITION.bottom,
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: PAGE_CART_LAYOUT.iconTextGap,
+              cursor: 'pointer',
+              zIndex: 40,
+              boxShadow: 'none',
+              color: '#000000',
+              font: `400 ${PAGE_CART_TEXT_STYLE.fontSize}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+              letterSpacing: 0,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <img
+              src="img/icon/cart.svg"
+              draggable={false}
+              alt=""
+              style={{
+                width: PAGE_CART_ICON_SIZE.width,
+                height: PAGE_CART_ICON_SIZE.height,
+                display: 'block',
+                flex: `0 0 ${PAGE_CART_ICON_SIZE.width}px`,
+                pointerEvents: 'none',
+                WebkitUserDrag: 'none',
+              }}
+            />
+            <span
+              style={{
+                display: 'block',
+                position: 'relative',
+                transform: `translateY(${PAGE_CART_TEXT_STYLE.textOffsetY}px)`,
+              }}
+            >
+              (cart)
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  right: PAGE_CART_COUNT_STYLE.right,
+                  top: PAGE_CART_COUNT_STYLE.top,
+                  font: `400 ${PAGE_CART_COUNT_STYLE.fontSize}px/1 -apple-system, BlinkMacSystemFont, sans-serif`,
+                  color: '#000000',
+                  pointerEvents: 'none',
+                }}
+              >
+                0
+              </span>
+            </span>
+          </button>
         </div>
       );
     }

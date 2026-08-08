@@ -1,0 +1,53 @@
+    html, body { margin: 0; height: 100%; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    #root { width: 100vw; height: 100vh; }
+    input[type=range] { height: 2px; background: #ddd; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px; background: #111; border-radius: 50%; cursor: pointer;
+    }
+    .cart-quantity-input::-webkit-inner-spin-button,
+    .cart-quantity-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .cart-quantity-input { appearance: textfield; -moz-appearance: textfield; }
+    @keyframes boxActionIconSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes cartTransferX {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(var(--cart-flight-x), 0, 0); }
+    }
+    @keyframes cartTransferY {
+      0% { transform: translate3d(0, 0, 0); }
+      38% { transform: translate3d(0, var(--cart-flight-arc-y), 0); }
+      100% { transform: translate3d(0, var(--cart-flight-y), 0); }
+    }
+    @keyframes cartTransferPack {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(.78) rotate(-2deg); }
+      9% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+      27% { opacity: 1; transform: translate(-50%, -50%) scale(.86) rotate(1deg); }
+      78% { opacity: 1; transform: translate(-50%, -50%) scale(.34) rotate(-3deg); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(.12) rotate(-5deg); }
+    }
+    @keyframes cartArrivalPulse {
+      0%, 100% { transform: scale(1); }
+      48% { transform: scale(1.1); }
+    }
+    @keyframes cartCountOldUp {
+      from { transform: translateY(0); }
+      to { transform: translateY(-120%); }
+    }
+    @keyframes cartCountNewUp {
+      from { transform: translateY(120%); }
+      to { transform: translateY(0); }
+    }
+    @keyframes cartBoxSlideIn {
+      from { transform: translate3d(calc(100% + 36px), 0, 0); }
+      to { transform: translate3d(0, 0, 0); }
+    }
+    @keyframes cartBoxSlideOut {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(calc(100% + 36px), 0, 0); }
+    }

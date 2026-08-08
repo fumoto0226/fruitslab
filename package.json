@@ -1,0 +1,11 @@
+{
+  "name": "fruitslab",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.jsx --bundle --format=esm --packages=external --sourcemap --outfile=dist/app.js",
+    "watch": "npm run build -- --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.8"
+  }
+}

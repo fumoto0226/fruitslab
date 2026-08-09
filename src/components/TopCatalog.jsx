@@ -6,9 +6,9 @@ import { TOP_CATALOG_SIDE_GAP } from '../config/appConfig.js';
 import {
   FRUIT_ITEMS,
   CATALOG_TABS,
-  TEST_BOX_ITEMS,
   CATALOG_SWITCH_STYLE,
 } from '../data/fruitCatalog.js';
+import { BoxThumbnail } from './BoxThumbnail.jsx';
 
 export function TopCatalog({
   activeCatalogCount,
@@ -16,6 +16,7 @@ export function TopCatalog({
   activeCatalogItems,
   activeCatalogTab,
   arrowFruitViewportWidth,
+  boxScreenRef,
   canScrollNext,
   canScrollPrev,
   catalogMaskLeft,
@@ -60,21 +61,90 @@ export function TopCatalog({
       left: 0,
       top: 0,
       width: '100%',
-      height: 76,
-      background: '#F7F8FA',
+      height: 68,
+      background: '#FFFFFF',
       zIndex: 20,
       display: 'flex',
       alignItems: 'center',
-      paddingLeft: 36,
+      justifyContent: 'space-between',
+      padding: '0 36px',
       boxSizing: 'border-box',
     }}
   >
-    <img
-      src="img/icon/logo-yoko.svg"
-      alt="果実 LABO"
-      draggable={false}
-      style={{ width: 178, height: 'auto', display: 'block', userSelect: 'none', WebkitUserDrag: 'none' }}
-    />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 26, minWidth: 0 }}>
+      <img
+        src="img/icon/logo-yoko.svg"
+        alt="果実 LABO"
+        draggable={false}
+        style={{ width: 178, height: 'auto', display: 'block', flexShrink: 0, userSelect: 'none', WebkitUserDrag: 'none' }}
+      />
+      <span
+        style={{
+          color: '#111111',
+          font: '400 13px/1.2 "Yu Mincho", "Hiragino Mincho ProN", serif',
+          letterSpacing: 0,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        フルーツ選び、始めよう。
+      </span>
+    </div>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 22,
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        aria-label="お問い合わせ"
+        style={{
+          appearance: 'none',
+          border: 0,
+          padding: 0,
+          background: 'transparent',
+          color: '#111111',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 9,
+          font: '400 13px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+          letterSpacing: 0,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        <img
+          src="img/icon/zixun.svg"
+          alt=""
+          draggable={false}
+          style={{ width: 18, height: 19, display: 'block', userSelect: 'none', WebkitUserDrag: 'none' }}
+        />
+        <span>お問い合わせ</span>
+      </button>
+      <button
+        type="button"
+        aria-label="login"
+        style={{
+          appearance: 'none',
+          minWidth: 88,
+          height: 30,
+          padding: '0 14px',
+          border: '1px solid #111111',
+          borderRadius: 999,
+          background: '#FFFFFF',
+          color: '#111111',
+          font: '400 14px/1 -apple-system, BlinkMacSystemFont, sans-serif',
+          letterSpacing: 0,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
+      >
+        login
+      </button>
+    </div>
   </header>
 
   <div
@@ -82,12 +152,13 @@ export function TopCatalog({
     style={{
       position: 'absolute',
 		              left: TOP_CATALOG_SIDE_GAP,
-		              top: 104,
+		              top: 96,
 		              transform: 'none',
 	              display: 'flex',
 	              alignItems: 'flex-start',
 	              gap: 24,
-	              zIndex: 35,
+		              // Drei 的 Html 按钮会使用很高的动态 z-index；组合弹窗打开时必须提升整个父层级。
+		              zIndex: !isFruitCatalog && openComboIndex != null ? 2147483000 : 35,
 	              width: `calc(100vw - ${(topCatalogDrawerViewportOffset + TOP_CATALOG_SIDE_GAP * 2).toFixed(2)}px)`,
 			              transition: 'none',
 		              justifyContent: 'center',
@@ -222,23 +293,16 @@ export function TopCatalog({
 		                        font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
 		                        color: '#111',
 		                        cursor: 'pointer',
+		                        touchAction: 'none',
 		                        zIndex: activeCombo ? 80 : 1,
 		                      }}
 		                    >
-	                      <img
-	                        src={item.imageSrc}
-	                        draggable={false}
-	                        onContextMenu={(e) => e.preventDefault()}
-	                        style={{
-	                          width: 76,
-	                          height: 68,
-	                          objectFit: 'contain',
-	                          pointerEvents: 'none',
-	                          WebkitUserDrag: 'none',
-	                          position: 'relative',
-	                          zIndex: 1,
-	                        }}
-	                        alt=""
+	                      <BoxThumbnail
+	                        fruits={item.fruits}
+	                        width={76}
+	                        height={68}
+	                        ariaLabel={item.name}
+	                        style={{ position: 'relative', zIndex: 1 }}
 	                      />
 	                      <span
 	                        style={{
@@ -261,7 +325,13 @@ export function TopCatalog({
 		                <div
 		                  data-combo-ui="true"
 		                  onPointerDown={(e) => e.stopPropagation()}
-		                  style={{
+		                  onClick={(e) => {
+		                    if (e.target.closest('button')) return;
+		                    e.stopPropagation();
+		                    setOpenComboIndex(null);
+		                    setComboReplacePrompt(null);
+		                  }}
+	                  style={{
 	                    position: 'absolute',
 	                    left: comboHoverPanelLeft,
 	                    top: -18,
@@ -276,20 +346,23 @@ export function TopCatalog({
 	                    cursor: 'pointer',
 	                  }}
 	                >
-	                  <img
-		                    src={activeCatalogItems[openComboIndex].imageSrc}
-		                    draggable={false}
-		                    alt=""
-		                    style={{
-		                      width: 76,
-		                      height: 68,
-		                      objectFit: 'contain',
-		                      display: 'block',
-		                      margin: '18px auto 0',
-		                      pointerEvents: 'none',
-		                      WebkitUserDrag: 'none',
-		                    }}
-		                  />
+	                  <div
+	                    onPointerDown={(e) => onComboPointerDown(e, openComboIndex)}
+	                    style={{
+	                      width: 76,
+	                      height: 68,
+	                      margin: '18px auto 0',
+	                      cursor: 'grab',
+	                      touchAction: 'none',
+	                    }}
+	                  >
+	                    <BoxThumbnail
+	                      fruits={activeCatalogItems[openComboIndex].fruits}
+	                      width={76}
+	                      height={68}
+	                      ariaLabel={activeCatalogItems[openComboIndex].name}
+	                    />
+	                  </div>
 		                  <div
 		                    style={{
 		                      marginTop: 8,
@@ -604,10 +677,10 @@ export function TopCatalog({
 	            <div
 	              onPointerDown={(e) => e.stopPropagation()}
 	              style={{
-	                position: 'absolute',
-	                left: '50%',
-	                top: CATALOG_SWITCH_STYLE.top + CATALOG_SWITCH_STYLE.height + 18,
-	                transform: 'translateX(-50%)',
+	                position: 'fixed',
+	                left: boxScreenRef?.current?.centerX ?? '50%',
+	                top: boxScreenRef?.current?.centerY ?? '62%',
+	                transform: 'translate(-50%, -50%)',
 	                width: 248,
 	                padding: '18px 18px 16px',
 	                borderRadius: 18,
@@ -634,7 +707,7 @@ export function TopCatalog({
 	              >
 	                <button
 	                  type="button"
-	                  onClick={() => placeComboInBox(TEST_BOX_ITEMS[comboReplacePrompt.comboIndex])}
+	                  onClick={() => placeComboInBox(comboReplacePrompt.comboItem)}
 	                  style={{
 	                    border: 0,
 	                    borderRadius: 999,

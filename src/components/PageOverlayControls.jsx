@@ -12,6 +12,7 @@ import {
   SIZE_SELECTOR_TEXT_STYLE,
 } from '../config/appConfig.js';
 import { CATALOG_SWITCH_STYLE, FRUIT_ITEMS } from '../data/fruitCatalog.js';
+import { BoxThumbnail } from './BoxThumbnail.jsx';
 
 export function PageOverlayControls({
   activeCartEditBox,
@@ -125,67 +126,48 @@ export function PageOverlayControls({
                 position: 'relative',
                 width: 144,
                 height: 102,
-                padding: 7,
                 boxSizing: 'border-box',
-                border: '4px solid rgba(235,244,249,.96)',
-                borderRadius: 12,
-                background: 'rgba(239,246,250,.92)',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gridTemplateRows: 'repeat(2, 1fr)',
-                boxShadow: '0 7px 20px rgba(40,55,65,.12)',
-                overflow: 'hidden',
                 animation: `cartTransferPack ${CART_TRANSFER_DURATION_MS}ms cubic-bezier(.2,.8,.2,1) both`,
                 willChange: 'transform, opacity',
               }}
             >
-              {[0, 1, 2, 3].map(index => {
-                const fruit = cartTransfer.fruits[index];
-                return (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'grid',
-                      placeItems: 'center',
-                      borderRight: index % 2 === 0 ? '2px solid rgba(255,255,255,.92)' : 0,
-                      borderBottom: index < 2 ? '2px solid rgba(255,255,255,.92)' : 0,
-                    }}
-                  >
-                    {fruit ? (
-                      <img
-                        src={fruit.wholeSrc}
-                        alt=""
-                        draggable={false}
-                        style={{ width: 43, height: 43, objectFit: 'contain', WebkitUserDrag: 'none' }}
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
+              <BoxThumbnail fruits={cartTransfer.fruits} width={144} height={102} />
             </div>
           </div>
         </div>
       ) : null}
 
-      {dragClone && (
-            <img
-              src={FRUIT_ITEMS[dragClone.appleId].wholeSrc}
-              draggable={false}
-              style={{
-                position: 'absolute',
-                left: dragClone.x,
-                top: dragClone.y,
-                width: 68,
-                height: 68,
-                objectFit: 'contain',
-                pointerEvents: 'none',
-                userSelect: 'none',
-                WebkitUserDrag: 'none',
-                zIndex: 50,
-              }}
-              alt=""
-            />
-          )}
+      {dragClone && (dragClone.type === 'combo' ? (
+        <BoxThumbnail
+          fruits={dragClone.fruits}
+          width={92}
+          height={94}
+          style={{
+            position: 'absolute',
+            left: dragClone.x,
+            top: dragClone.y,
+            zIndex: 50,
+          }}
+        />
+      ) : (
+        <img
+          src={FRUIT_ITEMS[dragClone.appleId].wholeSrc}
+          draggable={false}
+          style={{
+            position: 'absolute',
+            left: dragClone.x,
+            top: dragClone.y,
+            width: 68,
+            height: 68,
+            objectFit: 'contain',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            WebkitUserDrag: 'none',
+            zIndex: 50,
+          }}
+          alt=""
+        />
+      ))}
 
           <button
             type="button"

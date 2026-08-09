@@ -30,7 +30,8 @@
       CATALOG_TABS,
       FRUIT_ITEMS,
       FRUITS_PER_PAGE,
-      TEST_BOX_ITEMS,
+      HISTORY_BOX_ITEMS,
+      POPULAR_BOX_ITEMS,
     } from './data/fruitCatalog.js';
     import { SIZE_SPIN_FRUIT_ANIMATION } from './utils/fruitAnimation.js';
     import { BoxScene } from './components/BoxScene.jsx';
@@ -88,6 +89,7 @@
 	      const [cartEditSession, setCartEditSession] = useState(null);
 	      const [cartLayoutProgress, setCartLayoutProgress] = useState(0);
 	      const [topCatalogLayoutProgress, setTopCatalogLayoutProgress] = useState(0);
+	      const [sceneReady, setSceneReady] = useState(false);
       const selectedSize = SIZE_OPTIONS[selectedSizeIndex];
       const requestedSize = SIZE_OPTIONS[requestedSizeIndex];
       const sizeTransitionActive = isSizeSpinning || isSizeShaking;
@@ -104,7 +106,13 @@
       const selectedCellUiOffsets = CELL_UI_OFFSETS_BY_SIZE[selectedSize.size] ?? CELL_UI_OFFSETS_BY_SIZE.M;
       const activeCatalogIndex = Math.max(0, CATALOG_TABS.findIndex(tab => tab.id === activeCatalogTab));
       const isFruitCatalog = activeCatalogTab === 'fruit';
-      const activeCatalogItems = isFruitCatalog ? FRUIT_ITEMS : TEST_BOX_ITEMS;
+      const activeCatalogItems = isFruitCatalog
+        ? FRUIT_ITEMS
+        : activeCatalogTab === 'history'
+          ? HISTORY_BOX_ITEMS
+          : POPULAR_BOX_ITEMS;
+      const activeCatalogItemsRef = useRef(activeCatalogItems);
+      activeCatalogItemsRef.current = activeCatalogItems;
       const activeCatalogCount = activeCatalogItems.length;
       const fruitSlotWidth = 126; // 顶部水果栏单格间距：水果宽 92 + 空隙 34；也用于计算滚动位置。
       const getFruitSlots = () => {
@@ -177,6 +185,8 @@
       const nextPlacedIdRef = useRef(0);
       const nextPlacementMotionRef = useRef(0);
       const draggingAppleIdRef = useRef(null);
+      const draggingComboIndexRef = useRef(null);
+      const requestPlaceComboRef = useRef(null);
       const dragOffsetRef = useRef({ x: 0, y: 0 });
       const dragStartRef = useRef({ x: 0, y: 0 });
       const didDragRef = useRef(false);
@@ -312,11 +322,13 @@
         e.stopPropagation();
       };
 
-      // 组合盒图片只负责横向滚动：短按仍然打开详情，移动后复用水果栏的惯性拖动。
+      // 组合盒与水果使用相同的方向判定：接近横向时滚动列表，其余方向可拖入 3D 盒子。
       const onComboPointerDown = (e, comboIndex) => {
+        const rect = e.currentTarget.getBoundingClientRect();
         pendingComboGestureRef.current = {
           active: true,
           comboIndex,
+          rect,
           startX: e.clientX,
           startY: e.clientY,
           startOffset: fruitOffsetRef.current,
@@ -338,12 +350,39 @@
           pendingComboGestureRef.current = null;
           setOpenComboIndex(null);
           setComboReplacePrompt(null);
-          beginFruitStripDrag(
-            pendingComboGesture.startX,
-            pendingComboGesture.startOffset,
-            pendingComboGesture.startTime
-          );
-          updateFruitStripDrag(e);
+
+          // 只有接近水平的约 20 度范围滚动列表，其余方向拖起整套组合。
+          if (Math.abs(dx) > Math.abs(dy) * 2.75) {
+            beginFruitStripDrag(
+              pendingComboGesture.startX,
+              pendingComboGesture.startOffset,
+              pendingComboGesture.startTime
+            );
+            updateFruitStripDrag(e);
+            return;
+          }
+
+          const comboItem = activeCatalogItemsRef.current[pendingComboGesture.comboIndex];
+          if (!comboItem) return;
+          draggingComboIndexRef.current = pendingComboGesture.comboIndex;
+          setReplacementFruitId(null);
+          dragOffsetRef.current = {
+            x: pendingComboGesture.startX - pendingComboGesture.rect.left,
+            y: pendingComboGesture.startY - pendingComboGesture.rect.top,
+          };
+          dragStartRef.current = {
+            x: pendingComboGesture.startX,
+            y: pendingComboGesture.startY,
+          };
+          setDragClone({
+            type: 'combo',
+            comboIndex: pendingComboGesture.comboIndex,
+            fruits: comboItem.fruits,
+            x: pendingComboGesture.rect.left,
+            y: pendingComboGesture.rect.top,
+            width: pendingComboGesture.rect.width,
+            height: pendingComboGesture.rect.height,
+          });
           return;
         }
 
@@ -382,7 +421,8 @@
         }
 
         const appleId = draggingAppleIdRef.current;
-        if (appleId == null) return;
+        const comboIndex = draggingComboIndexRef.current;
+        if (appleId == null && comboIndex == null) return;
         const nx = e.clientX - dragOffsetRef.current.x;
         const ny = e.clientY - dragOffsetRef.current.y;
         const dx = e.clientX - dragStartRef.current.x;
@@ -404,9 +444,24 @@
           return;
         }
 
+        const comboIndex = draggingComboIndexRef.current;
+        draggingComboIndexRef.current = null;
         const appleId = draggingAppleIdRef.current;
         draggingAppleIdRef.current = null;
         setDragClone(null);
+
+        if (comboIndex != null) {
+          const box = boxScreenRef.current;
+          if (!box) return;
+          const padding = 36;
+          const insideBox = (
+            e.clientX >= box.minX - padding && e.clientX <= box.maxX + padding &&
+            e.clientY >= box.minY - padding && e.clientY <= box.maxY + padding
+          );
+          if (insideBox) requestPlaceComboRef.current?.(comboIndex);
+          return;
+        }
+
         if (appleId == null) return;
         setPlacedFruits(prev => {
           const box = boxScreenRef.current;
@@ -466,15 +521,16 @@
 	      };
 
 	      const requestPlaceCombo = (comboIndex) => {
-	        const comboItem = TEST_BOX_ITEMS[comboIndex];
+	        const comboItem = activeCatalogItems[comboIndex];
 	        if (!comboItem) return;
 	        if (!comboReplacePromptSeen && placedFruits.length > 0) {
-	          setComboReplacePrompt({ comboIndex });
+	          setComboReplacePrompt({ comboIndex, comboItem });
 	          setComboReplacePromptSeen(true);
 	          return;
 	        }
 	        placeComboInBox(comboItem);
 	      };
+	      requestPlaceComboRef.current = requestPlaceCombo;
 
 	      const onComboCardClick = (e, comboIndex) => {
 	        e.stopPropagation();
@@ -1109,7 +1165,33 @@
             defaultPolarAngle={defaultPolarAngle}
             rotateUpLimit={rotateUpLimit}
             rotateDownLimit={rotateDownLimit}
+            onSceneReady={() => setSceneReady(true)}
           />
+
+	        <div
+	          role="status"
+	          aria-label="3Dボックスを読み込み中"
+	          aria-hidden={sceneReady}
+	          style={{
+	            position: 'absolute',
+	            left: `calc(50% - ${cartContentOffset}px)`,
+	            top: '64%',
+	            width: 26,
+	            height: 26,
+	            marginLeft: -13,
+	            marginTop: -13,
+	            border: '1.5px solid rgba(17,17,17,.18)',
+	            borderTopColor: '#111111',
+	            borderRadius: '50%',
+	            boxSizing: 'border-box',
+	            opacity: sceneReady ? 0 : 1,
+	            visibility: sceneReady ? 'hidden' : 'visible',
+	            transition: 'opacity 180ms ease, visibility 0s linear 180ms',
+	            animation: sceneReady ? 'none' : 'sceneLoadingSpin 720ms linear infinite',
+	            pointerEvents: 'none',
+	            zIndex: 12,
+	          }}
+	        />
 
           <TopCatalog
             activeCatalogCount={activeCatalogCount}
@@ -1117,6 +1199,7 @@
             activeCatalogItems={activeCatalogItems}
             activeCatalogTab={activeCatalogTab}
             arrowFruitViewportWidth={arrowFruitViewportWidth}
+            boxScreenRef={boxScreenRef}
             canScrollNext={canScrollNext}
             canScrollPrev={canScrollPrev}
             catalogMaskLeft={catalogMaskLeft}

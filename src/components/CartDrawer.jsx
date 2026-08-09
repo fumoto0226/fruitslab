@@ -9,6 +9,7 @@ import {
   CART_FOOTER_ARROW_OFFSET_X,
 } from '../config/appConfig.js';
 import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
+import { BoxThumbnail } from './BoxThumbnail.jsx';
 
 export function CartDrawer({
   cartOpen,
@@ -348,35 +349,12 @@ export function CartDrawer({
 	                          pointerEvents: expanded ? 'auto' : 'none',
 	                        }}
 	                      >
-	                        <div
-	                          style={{
-	                            width: 108,
-	                            height: 82,
-	                            borderRadius: 8,
-	                            background: '#F7F8FA',
-	                            display: 'grid',
-	                            gridTemplateColumns: 'repeat(2, 1fr)',
-	                            gridTemplateRows: 'repeat(2, 1fr)',
-	                            overflow: 'hidden',
-	                          }}
-	                        >
-	                          {[0, 1, 2, 3].map(index => {
-	                            const fruit = fruits[index];
-	                            return (
-	                              <div
-	                                key={index}
-	                                style={{
-	                                  display: 'grid',
-	                                  placeItems: 'center',
-	                                  borderRight: index % 2 === 0 ? '1px solid rgba(210,219,228,0.85)' : 0,
-	                                  borderBottom: index < 2 ? '1px solid rgba(210,219,228,0.85)' : 0,
-	                                }}
-	                              >
-	                                {fruit ? <img src={fruit.wholeSrc} alt="" draggable={false} style={{ width: 36, height: 36, objectFit: 'contain', WebkitUserDrag: 'none' }} /> : null}
-	                              </div>
-	                            );
-	                          })}
-	                        </div>
+	                        <BoxThumbnail
+	                          fruits={box.items}
+	                          width={108}
+	                          height={82}
+	                          ariaLabel={`${box.name}の内容`}
+	                        />
 	                        <div style={{ display: 'grid', alignContent: 'start', gap: 5, paddingTop: 2 }}>
 	                          {fruits.map((fruit, index) => (
 	                            <div key={`${fruit.name}-${index}`} style={{ font: '400 11px/1.25 -apple-system, BlinkMacSystemFont, sans-serif', color: '#111111' }}>

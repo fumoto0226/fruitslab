@@ -3,7 +3,7 @@
 /** @jsxFrag React.Fragment */
 import * as React from 'react';
 const { Suspense } = React;
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, OrbitControls } from '@react-three/drei';
 import {
   CELL_INFO_PRESS_HIDE_DELAY,
@@ -30,6 +30,18 @@ import {
   BoxNoticeLabel3D,
 } from '../three/BoxOverlays.jsx';
 import { GlassCube, AutoReturn, ViewOffset } from '../three/GlassBox.jsx';
+
+function SceneReadySignal({ onReady }) {
+  const hasReportedRef = React.useRef(false);
+
+  useFrame(() => {
+    if (hasReportedRef.current) return;
+    hasReportedRef.current = true;
+    onReady?.();
+  });
+
+  return null;
+}
 
 export function BoxScene({
   displayedScreenShift,
@@ -71,6 +83,7 @@ export function BoxScene({
   defaultPolarAngle,
   rotateUpLimit,
   rotateDownLimit,
+  onSceneReady,
 }) {
   return (
   <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
@@ -163,6 +176,7 @@ export function BoxScene({
         </group>
       </group>
       <BoxScreenTracker groupRef={groupRef} screenRef={boxScreenRef} layout={selectedBoxLayout} />
+      <SceneReadySignal onReady={onSceneReady} />
       <AutoReturn easeSpeed={0.15} />
       <Environment preset="warehouse" />
     </Suspense>

@@ -159,20 +159,21 @@ import { DEFAULT_BOX_LAYOUT } from '../config/appConfig.js';
        frame. Rotation still pivots around the box itself.
        ══════════════════════════════════════════════ */
 
-    export function ViewOffset({ shift = 0.2, shiftX = 0 }) {
+    export function ViewOffset({ shift = 0.2, shiftX = 0, extendBelowViewport = false }) {
       const { camera, size } = useThree();
       useEffect(() => {
         if (typeof camera.setViewOffset !== 'function') return;
+        const bottomExtension = extendBelowViewport ? (size.width <= 800 ? 100 : 150) : 0;
+        const baseHeight = Math.max(1, size.height - bottomExtension);
         camera.setViewOffset(
           size.width,
-          size.height * (1 + shift),
+          baseHeight * (1 + shift),
           shiftX,
-          -size.height * shift,
+          -baseHeight * shift,
           size.width,
           size.height,
         );
         return () => camera.clearViewOffset();
-      }, [camera, size.width, size.height, shift, shiftX]);
+      }, [camera, size.width, size.height, shift, shiftX, extendBelowViewport]);
       return null;
     }
-

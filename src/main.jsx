@@ -35,6 +35,8 @@
     } from './data/fruitCatalog.js';
     import { SIZE_SPIN_FRUIT_ANIMATION } from './utils/fruitAnimation.js';
     import { BoxScene } from './components/BoxScene.jsx';
+    import { AboutSection } from './components/AboutSection.jsx';
+    import { ProductCatalog } from './components/ProductCatalog.jsx';
     import { CartDrawer } from './components/CartDrawer.jsx';
     import { TopCatalog } from './components/TopCatalog.jsx';
     import { PageOverlayControls } from './components/PageOverlayControls.jsx';
@@ -80,6 +82,7 @@
 	      const [comboReplacePromptSeen, setComboReplacePromptSeen] = useState(false);
 	      const [cartOpen, setCartOpen] = useState(false);
 	      const [cartBoxes, setCartBoxes] = useState([]);
+	      const [hasEverAddedBoxToCart, setHasEverAddedBoxToCart] = useState(false);
 	      const [cartTransfer, setCartTransfer] = useState(null);
 	      const [cartCountMotion, setCartCountMotion] = useState(null);
 	      const [expandedCartBoxIds, setExpandedCartBoxIds] = useState([]);
@@ -90,7 +93,13 @@
 	      const [cartLayoutProgress, setCartLayoutProgress] = useState(0);
 	      const [topCatalogLayoutProgress, setTopCatalogLayoutProgress] = useState(0);
 	      const [sceneReady, setSceneReady] = useState(false);
+	      const [favoriteFruitIds, setFavoriteFruitIds] = useState(() => new Set());
       const selectedSize = SIZE_OPTIONS[selectedSizeIndex];
+	      const toggleFavoriteFruit = (fruitId) => setFavoriteFruitIds((current) => {
+	        const next = new Set(current);
+	        next.has(fruitId) ? next.delete(fruitId) : next.add(fruitId);
+	        return next;
+	      });
       const requestedSize = SIZE_OPTIONS[requestedSizeIndex];
       const sizeTransitionActive = isSizeSpinning || isSizeShaking;
       // 购物车侧栏打开时：盒子和“单品/人气セット/履歴”整体往左让位。数值越小，盒子越靠右。
@@ -990,6 +999,8 @@
 	          return;
 	        }
 
+	        setHasEverAddedBoxToCart(true);
+
 	        // 每次根据购物车内现有的标准名称重新编号，删除最大编号后可以自然复用。
 	        // 用户手动输入的“BOX 数字”也会参与计算，例如 BOX 153 后新增 BOX 154。
 	        const boxNumber = cartBoxes.reduce((maxNumber, box) => {
@@ -1112,19 +1123,32 @@
 	        0,
 	      );
 	      const cartTotal = cartBoxes.reduce((sum, box) => sum + box.price * box.quantity, 0);
+	      const cartAttentionGuide = cartOpen
+	        && cartBoxes.length === 0
+	        && placedFruits.length > 0
+	        && !hasEverAddedBoxToCart;
+	      useEffect(() => {
+	        window.__FRUITSLAB_CART_ATTENTION_GUIDE__ = cartAttentionGuide;
+	        return () => {
+	          window.__FRUITSLAB_CART_ATTENTION_GUIDE__ = false;
+	        };
+	      }, [cartAttentionGuide]);
 	      const activeCartEditBox = cartEditSession
 	        ? cartBoxes.find(box => box.id === cartEditSession.boxId) ?? null
 	        : null;
 	      const formatYen = (value) => `${value.toLocaleString('ja-JP')}円（税込）`;
 
 		      return (
-	        <div
+	        <main
+	          data-cart-attention-guide={cartAttentionGuide ? 'active' : 'inactive'}
 	          onPointerDown={() => {
 	            setOpenComboIndex(null);
 	            setComboReplacePrompt(null);
 	          }}
-	          style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#F7F8FA', position: 'relative' }}
+	          style={{ width: '100%', background: '#F7F8FA' }}
 	        >
+          <section className="hero-section" aria-label="フルーツボックスをつくる">
+          <div className="hero-interactive">
           <BoxScene
             displayedScreenShift={displayedScreenShift}
             cartContentOffset={cartContentOffset}
@@ -1159,6 +1183,7 @@
             clearAllFruits={clearAllFruits}
             addBoxToCart={addBoxToCart}
             cartEditSession={cartEditSession}
+            cartAttentionGuide={cartAttentionGuide}
             boxScreenRef={boxScreenRef}
             setModelDragging={setModelDragging}
             rotateLeftRightLimit={rotateLeftRightLimit}
@@ -1212,6 +1237,7 @@
             fruitStripDragging={fruitStripDragging}
             fruitStripTranslate={fruitStripTranslate}
             fruitViewportWidth={fruitViewportWidth}
+            favoriteFruitIds={favoriteFruitIds}
             isFruitCatalog={isFruitCatalog}
             nextCatalogArrowLeft={nextCatalogArrowLeft}
             onAppleClick={onAppleClick}
@@ -1234,6 +1260,7 @@
             setOpenComboIndex={setOpenComboIndex}
             setReplacementFruitId={setReplacementFruitId}
             topCatalogDrawerViewportOffset={topCatalogDrawerViewportOffset}
+            toggleFavoriteFruit={toggleFavoriteFruit}
             turnFruitPage={turnFruitPage}
           />
 
@@ -1272,7 +1299,11 @@
             formatYen={formatYen}
             cartTotal={cartTotal}
           />
-	        </div>
+          </div>
+          </section>
+          <AboutSection />
+          <ProductCatalog favoriteFruitIds={favoriteFruitIds} toggleFavoriteFruit={toggleFavoriteFruit} />
+	        </main>
       );
     }
 

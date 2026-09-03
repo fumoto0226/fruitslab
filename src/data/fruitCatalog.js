@@ -32,6 +32,17 @@ export const CUT_FRUIT_BASE_PATH = 'img/fruits/Cut Fruit/';
       { name: 'スイカ', wholeSrc: 'img/fruits/Whole Fruit/Watermelon/Red.png', cutSrc: cutFruit('Watermelon/Red.png'), boxSrc: `${BOX_FRUIT_BASE_PATH}box-Watermelon-Red.png` },
       { name: '黄スイカ', wholeSrc: 'img/fruits/Whole Fruit/Watermelon/Yellow.png', cutSrc: cutFruit('Watermelon/Yellow.png'), boxSrc: `${BOX_FRUIT_BASE_PATH}box-Watermelon-Yellow.png` },
     ];
+    // 展示层的顺序单独管理，不改动 FRUIT_ITEMS 的底层 ID，避免影响组合商品和购物车数据。
+    export const FRUIT_DISPLAY_ORDER = FRUIT_ITEMS
+      .map((_, id) => id)
+      .sort((leftId, rightId) => {
+        const moveToEnd = (fruit) => {
+          if (/\/Pear\//.test(fruit.wholeSrc)) return 1;
+          if (/\/(Peach|Strawberry)\//.test(fruit.wholeSrc)) return 2;
+          return 0;
+        };
+        return moveToEnd(FRUIT_ITEMS[leftId]) - moveToEnd(FRUIT_ITEMS[rightId]);
+      });
     export const FRUITS_PER_PAGE = 10;
     export const CATALOG_TABS = [
       { id: 'fruit', label: 'フルーツ' },

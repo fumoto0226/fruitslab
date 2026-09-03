@@ -454,14 +454,16 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
       );
     }
 
-    function BoxActionPill({ variant, label, icon, onClick, visible }) {
+    function BoxActionPill({ variant, label, icon, onClick, visible, attentionGuide = false }) {
       const hideTimerRef = useRef(null);
       const expandTimerRef = useRef(null);
       const collapseTimerRef = useRef(null);
       const clickTimerRef = useRef(null);
+      const guideTimersRef = useRef([]);
       const [delayedVisible, setDelayedVisible] = useState(false);
       const [expanded, setExpanded] = useState(false);
       const [clickMotionKey, setClickMotionKey] = useState(0);
+      const guideActive = attentionGuide;
 
       const clearHoverTimers = () => {
         if (expandTimerRef.current) {
@@ -473,6 +475,34 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
           collapseTimerRef.current = null;
         }
       };
+
+      const clearGuideTimers = () => {
+        guideTimersRef.current.forEach(clearTimeout);
+        guideTimersRef.current = [];
+      };
+
+      useEffect(() => {
+        clearGuideTimers();
+        if (!guideActive || !visible || !delayedVisible) return undefined;
+
+        const schedule = (callback, delay) => {
+          const timer = setTimeout(callback, delay);
+          guideTimersRef.current.push(timer);
+          return timer;
+        };
+        const runGuide = () => {
+          setClickMotionKey(key => key + 1);
+          schedule(() => setExpanded(true), 220);
+          schedule(() => {
+            setClickMotionKey(key => key + 1);
+            setExpanded(false);
+            schedule(runGuide, BOX_ACTION_WIDTH_TRANSITION_MS + 2000);
+          }, 1800);
+        };
+
+        schedule(runGuide, 2000);
+        return clearGuideTimers;
+      }, [guideActive, visible, delayedVisible]);
 
       useEffect(() => {
         if (hideTimerRef.current) {
@@ -503,6 +533,7 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
 
       useEffect(() => () => {
         clearHoverTimers();
+        clearGuideTimers();
         if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
       }, []);
 
@@ -511,6 +542,8 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
         <button
           type="button"
           aria-label={label}
+          data-attention-guide={guideActive ? 'active' : 'inactive'}
+          data-expanded={expanded ? 'true' : 'false'}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -617,7 +650,7 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
      * 把整个盒子当作一个大格子：锚点使用盒子局部 3D 坐标，
      * 绘制仍是正对镜头的 HTML，所以移动逻辑与格子白色 X 一致。
      */
-    function BoxActionButtonAnchor({ position, variant, icon, label, visible, onClick }) {
+    function BoxActionButtonAnchor({ position, variant, icon, label, visible, onClick, attentionGuide = false }) {
       return (
         <Html position={position} style={{ pointerEvents: 'none' }}>
           {/* 让 24px 圆形图标的圆心精确落在 3D 锚点上。 */}
@@ -628,6 +661,7 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
               label={label}
               visible={visible}
               onClick={onClick}
+              attentionGuide={attentionGuide}
             />
           </div>
         </Html>
@@ -640,7 +674,16 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
       onClear,
       onAddToCart,
       cartLabel = 'カートに入れる',
+      cartAttentionGuide = false,
     }) {
+      const [bridgedCartAttentionGuide, setBridgedCartAttentionGuide] = useState(false);
+      const bridgedGuideRef = useRef(false);
+      useFrame(() => {
+        const nextGuideState = Boolean(window.__FRUITSLAB_CART_ATTENTION_GUIDE__);
+        if (nextGuideState === bridgedGuideRef.current) return;
+        bridgedGuideRef.current = nextGuideState;
+        setBridgedCartAttentionGuide(nextGuideState);
+      });
       const actionX = layout.boxW / 2 + 0.28; // 两个按钮整体左右位置：数值越大，离盒子右边越远。
       const actionY = layout.cellY + 0.08;    // 两个按钮整体高度：数值越大，越靠盒子开口上方。
       const firstZ = layout.backZ - 0.45;     // 第一个按钮前后位置：数值越小，越靠屏幕上方。
@@ -663,6 +706,7 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
             label={cartLabel}
             visible={visible}
             onClick={onAddToCart}
+            attentionGuide={cartAttentionGuide || bridgedCartAttentionGuide}
           />
         </>
       );
@@ -738,4 +782,3 @@ import { FRUIT_ITEMS } from '../data/fruitCatalog.js';
       });
       return null;
     }
-

@@ -1,6 +1,6 @@
-    html, body { margin: 0; height: 100%; overflow: hidden;
+    html, body { margin: 0; min-height: 100%; overflow-x: hidden; overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-    #root { width: 100vw; height: 100vh; }
+    #root { width: 100%; min-height: 100vh; }
     input[type=range] { height: 2px; background: #ddd; -webkit-appearance: none; appearance: none; cursor: pointer; }
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none; width: 12px; height: 12px; background: #111; border-radius: 50%; cursor: pointer;
@@ -53,4 +53,208 @@
     @keyframes cartBoxSlideOut {
       from { transform: translate3d(0, 0, 0); }
       to { transform: translate3d(calc(100% + 36px), 0, 0); }
+    }
+
+    /* 首屏布局仍严格使用 100vh；额外高度只负责在盒子下方留下过渡空间。 */
+    .hero-section {
+      width: 100%;
+      min-height: calc(100vh + 150px);
+      position: relative;
+      overflow: hidden;
+      background: #f7f8fa;
+    }
+    .hero-interactive {
+      width: 100%;
+      height: 100vh;
+      position: relative;
+      overflow: visible;
+      isolation: isolate;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+    .hero-interactive > .hero-3d-canvas {
+      height: calc(100vh + 150px) !important;
+    }
+
+    .about-section {
+      --about-ink: #171717;
+      min-height: 100vh;
+      padding: 68px clamp(32px, 5vw, 82px) 58px;
+      box-sizing: border-box;
+      background: #f7f8fa;
+      color: var(--about-ink);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    }
+    .about-heading-row { display: flex; align-items: baseline; gap: 28px; }
+    .about-heading-row h2 {
+      margin: 0;
+      font: 300 clamp(34px, 3.2vw, 50px)/1 -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: .01em;
+    }
+    .about-heading-row span { font-size: 15px; letter-spacing: .12em; }
+    .about-lead {
+      margin: 64px auto 30px;
+      text-align: center;
+      font-size: clamp(20px, 1.65vw, 28px);
+      line-height: 1.85;
+      letter-spacing: .12em;
+    }
+    .about-ranking {
+      width: min(1120px, 92vw);
+      margin: 0 auto 26px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+    }
+    .about-ranked-box { position: relative; height: clamp(190px, 18vw, 270px); }
+    .about-ranked-box p {
+      position: absolute;
+      left: 50%;
+      bottom: -4px;
+      margin: 0;
+      padding: 5px 13px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(247, 248, 250, .88);
+      font-size: 13px;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      z-index: 8;
+    }
+    .about-rank-1 { height: clamp(220px, 21vw, 315px); }
+    .about-rank-badge {
+      position: absolute;
+      left: 3%;
+      top: 2%;
+      width: 68px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      background: var(--badge-tone);
+      border: 1px solid #4b4b4b;
+      clip-path: polygon(50% 0%,61% 14%,78% 8%,82% 25%,100% 27%,90% 43%,100% 57%,82% 64%,78% 82%,61% 77%,50% 100%,39% 77%,22% 82%,18% 64%,0 57%,10% 43%,0 27%,18% 25%,22% 8%,39% 14%);
+      font: 600 30px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+      z-index: 10;
+    }
+    .about-rank-1 .about-rank-badge { width: 78px; font-size: 36px; }
+    .about-steps {
+      width: min(1140px, 92vw);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .about-step-card {
+      min-height: 138px;
+      padding: 24px 30px 22px;
+      border: 1px solid #a8a8a8;
+      border-radius: 22px;
+      box-sizing: border-box;
+      background: rgba(255,255,255,.38);
+    }
+    .about-step-card h3 { margin: 0 0 13px; text-align: center; font-size: 20px; font-weight: 500; letter-spacing: .08em; }
+    .about-step-card p { margin: 0; font-size: 15px; line-height: 1.8; letter-spacing: .055em; }
+    .about-features {
+      margin: 42px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: clamp(28px, 5vw, 76px);
+      flex-wrap: wrap;
+    }
+    .about-features > div { display: flex; align-items: center; gap: 10px; }
+    .about-features span { color: #747474; font: 700 24px/1 -apple-system, BlinkMacSystemFont, sans-serif; }
+    .about-features p { margin: 0; font-size: 16px; letter-spacing: .06em; }
+
+    .products-section {
+      --product-ink: #111;
+      min-height: 100vh;
+      padding: 47px max(180px, calc((100vw - 990px) / 2)) 59px;
+      box-sizing: border-box;
+      background: #f7f8fa;
+      color: var(--product-ink);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      position: relative;
+    }
+    .products-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; }
+    .products-heading { display: flex; align-items: baseline; gap: 17px; }
+    .products-heading h2 { margin: 0; font: 300 clamp(29px, 2.43vw, 38px)/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .015em; }
+    .products-heading span { font-size: 12px; letter-spacing: .12em; }
+    .products-toolbar { display: flex; align-items: center; gap: 23px; }
+    .products-pagination { display: flex; align-items: center; gap: 9px; font: 400 8px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .12em; }
+    .products-pagination button { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+    .products-pagination button img { width: 23px; height: 23px; display: block; pointer-events: none; }
+    .products-pagination button:last-child img { transform: scaleX(-1); }
+    .products-pagination button:disabled { visibility: hidden; pointer-events: none; }
+    .products-bag { position: relative; display: flex; align-items: center; }
+    .products-bag-grid { width: 30px; height: 23px; border: 1px solid #111; background: linear-gradient(90deg, transparent 49%, #111 50%, transparent 52%), linear-gradient(transparent 49%, #111 50%, transparent 52%); }
+    .products-bag b { position: absolute; right: -8px; top: -9px; width: 17px; height: 17px; display: grid; place-items: center; border: 1px solid #111; border-radius: 50%; background: #f7f8fa; font: 500 8px/1 -apple-system, BlinkMacSystemFont, sans-serif; }
+    .products-filters { margin: 24px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .products-filters button { min-height: 26px; padding: 0 15px; border: 1px solid #777; border-radius: 999px; background: transparent; color: #111; font: 400 11px/1 "Yu Mincho", "Hiragino Mincho ProN", serif; letter-spacing: .04em; cursor: pointer; transition: background .2s, color .2s, transform .2s; }
+    .products-filters button:hover { transform: translateY(-2px); }
+    .products-filters button.is-active { border-color: #111; background: #111; color: #fff; }
+    .products-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 22px); }
+    .product-card { width: 100%; max-width: 162px; min-width: 0; justify-self: center; border: 1px solid #c8ccd1; background: #fff; animation: productCardIn .46s cubic-bezier(.22,.8,.25,1) both; animation-delay: var(--card-delay); }
+    .product-image-wrap { position: relative; aspect-ratio: 1; overflow: hidden; background: #edf1f7; }
+    .product-image { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; transition: opacity .5s cubic-bezier(.2,.7,.2,1), transform .75s cubic-bezier(.2,.7,.2,1); }
+    .product-image-real { opacity: 0; transform: scale(1.035); }
+    .product-card:hover .product-image-art { opacity: 0; transform: scale(.97); }
+    .product-card:hover .product-image-real { opacity: 1; transform: scale(1); }
+    .product-favorite { position: absolute; right: 9px; top: 8px; z-index: 3; width: 23px; height: 23px; padding: 0; display: grid; place-items: center; border: 0; background: transparent; opacity: 0; transform: translateY(-11px) scale(.94); cursor: pointer; transition: opacity .24s ease, transform .34s cubic-bezier(.2,.8,.2,1); }
+    .product-favorite img { width: 19px; height: 17px; display: block; object-fit: contain; pointer-events: none; }
+    .product-card:hover .product-favorite { opacity: 1; transform: translate(0, 0) scale(1); }
+    .product-card-footer { height: 37px; display: grid; grid-template-columns: minmax(0, 1fr) 37px; }
+    .product-card-footer p { margin: 0; padding: 4px 7px; min-width: 0; display: flex; align-items: center; gap: 4px; }
+    .product-card-footer p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(10px, .78vw, 13px); }
+    .product-name-heart { width: 10px; height: 9px; display: block; flex: 0 0 auto; object-fit: contain; }
+    .product-card-footer button { border: 0; border-left: 1px solid #d1d1d1; cursor: pointer; }
+    .product-add { width: 37px; height: 37px; aspect-ratio: 1; padding: 0; background: #111; color: #fff; font: 200 21px/1 -apple-system, BlinkMacSystemFont, sans-serif; transition: background .18s; }
+    .product-toast { position: fixed; left: 50%; bottom: 25px; z-index: 90; transform: translateX(-50%); padding: 10px 16px; border: 1px solid #111; border-radius: 999px; background: #c8ff00; font-size: 11px; letter-spacing: .06em; box-shadow: 0 9px 28px rgba(0,0,0,.12); }
+    @keyframes productCardIn { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: none; } }
+
+    .top-fruit-item { position: relative; width: 92px; height: 94px; }
+    .top-fruit-main { width: 92px; padding: 0; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none; touch-action: none; color: #111; font: 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; }
+    .top-fruit-main > img { width: 68px; height: 68px; display: block; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+    .top-fruit-name { margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+    .top-fruit-name > img { width: 8px; height: 7px; display: block; object-fit: contain; }
+    .top-fruit-favorite { position: absolute; right: -1px; top: 3px; z-index: 4; width: 20px; height: 20px; padding: 0; display: grid; place-items: center; border: 0; background: transparent; opacity: 0; transform: translateY(-7px) scale(.94); cursor: pointer; transition: opacity .22s ease, transform .32s cubic-bezier(.2,.8,.2,1); }
+    .top-fruit-favorite > img { width: 16px; height: 15px; display: block; object-fit: contain; pointer-events: none; }
+    .top-fruit-item:hover .top-fruit-favorite { opacity: 1; transform: translateY(0) scale(1); }
+
+    @media (max-width: 800px) {
+      .hero-section { min-height: calc(100vh + 100px); }
+      .hero-interactive > .hero-3d-canvas { height: calc(100vh + 100px) !important; }
+      .about-section { padding: 42px 20px 48px; }
+      .about-heading-row { gap: 12px; }
+      .about-heading-row span { font-size: 12px; }
+      .about-lead { margin: 42px auto 28px; font-size: 16px; text-align: left; }
+      .about-lead br { display: none; }
+      .about-ranking { grid-template-columns: 1fr; width: min(430px, 100%); gap: 4px; }
+      .about-ranked-box, .about-rank-1 { height: 240px; }
+      .about-rank-1 { grid-row: 1; }
+      .about-rank-2 { grid-row: 2; }
+      .about-rank-3 { grid-row: 3; }
+      .about-steps { width: 100%; grid-template-columns: 1fr; gap: 14px; }
+      .about-step-card { min-height: 0; }
+      .about-features { justify-content: flex-start; gap: 20px 30px; }
+      .products-section { padding: 40px 22px 54px; }
+      .products-title-row { align-items: flex-start; }
+      .products-heading { gap: 11px; }
+      .products-heading span { font-size: 12px; }
+      .products-toolbar { gap: 15px; }
+      .products-pagination span { display: none; }
+      .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+      .products-filters { margin: 28px 0; gap: 9px; }
+      .products-filters button { padding: 0 14px; font-size: 12px; }
+      .product-card-footer { grid-template-columns: minmax(0, 1fr) 37px; }
+    }
+
+    @media (min-width: 801px) and (max-width: 1180px) {
+      .products-section { padding-left: 52px; padding-right: 52px; }
+      .products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .product-card { animation: none; }
+      .product-image, .product-photo-label { transition: none; }
     }

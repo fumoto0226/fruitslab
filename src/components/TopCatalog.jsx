@@ -5,6 +5,7 @@ import * as React from 'react';
 import { TOP_CATALOG_SIDE_GAP } from '../config/appConfig.js';
 import {
   FRUIT_ITEMS,
+  FRUIT_DISPLAY_ORDER,
   CATALOG_TABS,
   CATALOG_SWITCH_STYLE,
 } from '../data/fruitCatalog.js';
@@ -29,6 +30,7 @@ export function TopCatalog({
   fruitStripDragging,
   fruitStripTranslate,
   fruitViewportWidth,
+  favoriteFruitIds,
   isFruitCatalog,
   nextCatalogArrowLeft,
   onAppleClick,
@@ -51,6 +53,7 @@ export function TopCatalog({
   setOpenComboIndex,
   setReplacementFruitId,
   topCatalogDrawerViewportOffset,
+  toggleFavoriteFruit,
   turnFruitPage,
 }) {
   return (
@@ -234,45 +237,43 @@ export function TopCatalog({
         }}
       >
         {isFruitCatalog ? (
-          FRUIT_ITEMS.map((fruit, id) => (
-	              <button
-              key={fruit.name}
-              type="button"
-              onPointerDown={(e) => onApplePointerDown(e, id)}
-              onClick={() => onAppleClick(id)}
-              onContextMenu={(e) => e.preventDefault()}
-              style={{
-                width: 92,
-                padding: 0,
-                border: 0,
-                background: 'transparent',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                cursor: 'grab',
-                userSelect: 'none',
-                touchAction: 'none',
-                font: '12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif',
-                color: '#111',
-              }}
-              aria-label={fruit.name}
-            >
-              <img
-                src={fruit.wholeSrc}
-                draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
-                style={{
-                  width: 68,
-                  height: 68,
-                  objectFit: 'contain',
-                  pointerEvents: 'none',
-                  WebkitUserDrag: 'none',
-                }}
-                alt=""
-              />
-              <span style={{ marginTop: 8, whiteSpace: 'nowrap' }}>{fruit.name}</span>
-            </button>
-          ))
+          FRUIT_DISPLAY_ORDER.map((id) => {
+            const fruit = FRUIT_ITEMS[id];
+            const isFavorite = favoriteFruitIds.has(id);
+            return (
+              <div className="top-fruit-item" key={fruit.name}>
+                <button
+                  type="button"
+                  className="top-fruit-main"
+                  onPointerDown={(e) => onApplePointerDown(e, id)}
+                  onClick={() => onAppleClick(id)}
+                  onContextMenu={(e) => e.preventDefault()}
+                  aria-label={fruit.name}
+                >
+                  <img
+                    src={fruit.wholeSrc}
+                    draggable={false}
+                    onContextMenu={(e) => e.preventDefault()}
+                    alt=""
+                  />
+                  <span className="top-fruit-name">
+                    <span>{fruit.name}</span>
+                    {isFavorite ? <img src="img/icon/HeartUsed.svg" alt="お気に入り" /> : null}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="top-fruit-favorite"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteFruit(id); }}
+                  aria-label={`${fruit.name}をお気に入りに追加`}
+                  aria-pressed={isFavorite}
+                >
+                  <img src={isFavorite ? 'img/icon/HeartUsed.svg' : 'img/icon/HeartUnused.svg'} alt="" />
+                </button>
+              </div>
+            );
+          })
 	                ) : (
 	                  activeCatalogItems.map((item, index) => {
 	                    const activeCombo = openComboIndex === index;

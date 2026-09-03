@@ -77,6 +77,7 @@ export function BoxScene({
   clearAllFruits,
   addBoxToCart,
   cartEditSession,
+  cartAttentionGuide,
   boxScreenRef,
   setModelDragging,
   rotateLeftRightLimit,
@@ -86,8 +87,13 @@ export function BoxScene({
   onSceneReady,
 }) {
   return (
-  <Canvas camera={{ position: [0, 3, 8], fov: 45 }}>
-    <ViewOffset shift={displayedScreenShift} shiftX={cartContentOffset} />
+  <Canvas
+    className="hero-3d-canvas"
+    camera={{ position: [0, 3, 8], fov: 45 }}
+    dpr={[1, 1.5]}
+    gl={{ antialias: true, powerPreference: 'high-performance' }}
+  >
+    <ViewOffset shift={displayedScreenShift} shiftX={cartContentOffset} extendBelowViewport />
     <color attach="background" args={['#F7F8FA']} />
     <ambientLight intensity={lightIntensity * 0.25} />
     <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
@@ -172,6 +178,7 @@ export function BoxScene({
             onClear={clearAllFruits}
             onAddToCart={addBoxToCart}
             cartLabel={cartEditSession ? '変更を保存' : 'カートに入れる'}
+            cartAttentionGuide={cartAttentionGuide}
           />
         </group>
       </group>

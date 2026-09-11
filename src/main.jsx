@@ -35,8 +35,6 @@
     } from './data/fruitCatalog.js';
     import { SIZE_SPIN_FRUIT_ANIMATION } from './utils/fruitAnimation.js';
     import { BoxScene } from './components/BoxScene.jsx';
-    import { AboutSection } from './components/AboutSection.jsx';
-    import { ProductCatalog } from './components/ProductCatalog.jsx';
     import { CartDrawer } from './components/CartDrawer.jsx';
     import { TopCatalog } from './components/TopCatalog.jsx';
     import { PageOverlayControls } from './components/PageOverlayControls.jsx';
@@ -1301,8 +1299,6 @@
           />
           </div>
           </section>
-          <AboutSection />
-          <ProductCatalog favoriteFruitIds={favoriteFruitIds} toggleFavoriteFruit={toggleFavoriteFruit} />
 	        </main>
       );
     }

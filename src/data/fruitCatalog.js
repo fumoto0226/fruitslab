@@ -59,15 +59,14 @@ export const CUT_FRUIT_BASE_PATH = 'img/fruits/Cut Fruit/';
 
     export const POPULAR_BOX_ITEMS = [
       makeBoxItem('太陽のごちそう', [11, 19, 18, 21]),
-      makeBoxItem('りんご大満喫', [0, 1, 2, 1]),
-      makeBoxItem('桃づくし', [3, 4, 5, 4]),
-      makeBoxItem('いちご日和', [6, 7, 8, 8]),
-      makeBoxItem('梨の実り', [9, 10, 9, 10]),
-      makeBoxItem('柑橘ひなた便', [11, 5, 11, 2]),
-      makeBoxItem('ぶどう雅', [12, 13, 12, 13]),
-      makeBoxItem('キウイ彩り', [14, 15, 16, 16]),
-      makeBoxItem('南国ごほうび', [17, 18, 16, 11]),
-      makeBoxItem('さくらんぼ便り', [19, 20, 19, 20]),
+      makeBoxItem('紫陽の彩り', [12, 11, 14, 19]),
+      makeBoxItem('虹色フルーツ便', [14, 15, 22, 7]),
+      makeBoxItem('桃苺の夏便り', [6, 7, 4, 21]),
+      makeBoxItem('さくらんぼ紅秀便', [20, 19, 19, 20]),
+      makeBoxItem('キウイ三彩', [15, 16, 14, 11]),
+      makeBoxItem('秋の果樹園', [0, 1, 2, 10]),
+      makeBoxItem('真夏の紅づくし', [21, 15, 19, 8]),
+      makeBoxItem('彩果の宝石箱', [12, 14, 11, 18]),
       makeBoxItem('夏祭り', [21, 22, 11, 5]),
       makeBoxItem('旬彩おまかせ', [0, 4, 8, 13]),
     ];

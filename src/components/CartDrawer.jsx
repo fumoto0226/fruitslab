@@ -31,6 +31,27 @@ export function CartDrawer({
   formatYen,
   cartTotal,
 }) {
+  const [cartScrollbarVisible, setCartScrollbarVisible] = React.useState(false);
+  const scrollHideTimerRef = React.useRef(null);
+
+  const handleCartScroll = () => {
+    setCartScrollbarVisible(true);
+    window.clearTimeout(scrollHideTimerRef.current);
+    scrollHideTimerRef.current = window.setTimeout(() => {
+      setCartScrollbarVisible(false);
+    }, 650);
+  };
+
+  React.useEffect(() => () => {
+    window.clearTimeout(scrollHideTimerRef.current);
+  }, []);
+
+  React.useEffect(() => {
+    if (cartOpen) return;
+    window.clearTimeout(scrollHideTimerRef.current);
+    setCartScrollbarVisible(false);
+  }, [cartOpen]);
+
   return (
   <aside
 	            onPointerDown={(e) => e.stopPropagation()}
@@ -88,7 +109,11 @@ export function CartDrawer({
 		              </button>
 	            </div>
 
-	            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 28px' }}>
+	            <div
+	              className={`cart-scroll-area${cartScrollbarVisible ? ' is-scrolling' : ''}`}
+	              onScroll={handleCartScroll}
+	              style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 28px' }}
+	            >
 	              {cartBoxes.length === 0 ? (
 	                <div
 	                  data-cart-empty

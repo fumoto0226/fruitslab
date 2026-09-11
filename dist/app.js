@@ -1,5 +1,5 @@
 // src/main.jsx
-import * as React11 from "react";
+import * as React9 from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE3 from "three";
 
@@ -210,15 +210,14 @@ var makeBoxItem = (name, fruitIds) => ({
 });
 var POPULAR_BOX_ITEMS = [
   makeBoxItem("\u592A\u967D\u306E\u3054\u3061\u305D\u3046", [11, 19, 18, 21]),
-  makeBoxItem("\u308A\u3093\u3054\u5927\u6E80\u55AB", [0, 1, 2, 1]),
-  makeBoxItem("\u6843\u3065\u304F\u3057", [3, 4, 5, 4]),
-  makeBoxItem("\u3044\u3061\u3054\u65E5\u548C", [6, 7, 8, 8]),
-  makeBoxItem("\u68A8\u306E\u5B9F\u308A", [9, 10, 9, 10]),
-  makeBoxItem("\u67D1\u6A58\u3072\u306A\u305F\u4FBF", [11, 5, 11, 2]),
-  makeBoxItem("\u3076\u3069\u3046\u96C5", [12, 13, 12, 13]),
-  makeBoxItem("\u30AD\u30A6\u30A4\u5F69\u308A", [14, 15, 16, 16]),
-  makeBoxItem("\u5357\u56FD\u3054\u307B\u3046\u3073", [17, 18, 16, 11]),
-  makeBoxItem("\u3055\u304F\u3089\u3093\u307C\u4FBF\u308A", [19, 20, 19, 20]),
+  makeBoxItem("\u7D2B\u967D\u306E\u5F69\u308A", [12, 11, 14, 19]),
+  makeBoxItem("\u8679\u8272\u30D5\u30EB\u30FC\u30C4\u4FBF", [14, 15, 22, 7]),
+  makeBoxItem("\u6843\u82FA\u306E\u590F\u4FBF\u308A", [6, 7, 4, 21]),
+  makeBoxItem("\u3055\u304F\u3089\u3093\u307C\u7D05\u79C0\u4FBF", [20, 19, 19, 20]),
+  makeBoxItem("\u30AD\u30A6\u30A4\u4E09\u5F69", [15, 16, 14, 11]),
+  makeBoxItem("\u79CB\u306E\u679C\u6A39\u5712", [0, 1, 2, 10]),
+  makeBoxItem("\u771F\u590F\u306E\u7D05\u3065\u304F\u3057", [21, 15, 19, 8]),
+  makeBoxItem("\u5F69\u679C\u306E\u5B9D\u77F3\u7BB1", [12, 14, 11, 18]),
   makeBoxItem("\u590F\u796D\u308A", [21, 22, 11, 5]),
   makeBoxItem("\u65EC\u5F69\u304A\u307E\u304B\u305B", [0, 4, 8, 13])
 ];
@@ -1730,7 +1729,7 @@ function BoxScene({
       dpr: [1, 1.5],
       gl: { antialias: true, powerPreference: "high-performance" }
     },
-    /* @__PURE__ */ React4.createElement(ViewOffset, { shift: displayedScreenShift, shiftX: cartContentOffset, extendBelowViewport: true }),
+    /* @__PURE__ */ React4.createElement(ViewOffset, { shift: displayedScreenShift, shiftX: cartContentOffset }),
     /* @__PURE__ */ React4.createElement("color", { attach: "background", args: ["#F7F8FA"] }),
     /* @__PURE__ */ React4.createElement("ambientLight", { intensity: lightIntensity * 0.25 }),
     /* @__PURE__ */ React4.createElement("directionalLight", { position: [10, 10, 5], intensity: lightIntensity, castShadow: true }),
@@ -1849,7 +1848,7 @@ function BoxScene({
   );
 }
 
-// src/components/AboutSection.jsx
+// src/components/CartDrawer.jsx
 import * as React6 from "react";
 
 // src/components/BoxThumbnail.jsx
@@ -1958,98 +1957,7 @@ function BoxThumbnail({ fruits = [], width = "100%", height = "100%", style, ari
   );
 }
 
-// src/components/AboutSection.jsx
-var RANKED_SETS = [
-  { rank: 3, item: POPULAR_BOX_ITEMS[2], tone: "#F3F4F5" },
-  { rank: 1, item: POPULAR_BOX_ITEMS[0], tone: "#FFF3B8" },
-  { rank: 2, item: POPULAR_BOX_ITEMS[1], tone: "#FFD4D4" }
-];
-var STEPS = [
-  { title: "\u2460 \u30B5\u30A4\u30BA\u3092\u9078\u3076", text: "S\uFF08400g\uFF09\u30FBM\uFF08700g\uFF09\u30FBL\uFF081kg\uFF09\u306E3\u30B5\u30A4\u30BA\u3092\u3054\u7528\u610F\u3057\u3066\u3044\u307E\u3059\u3002" },
-  { title: "\u2461 \u679C\u5B9F\u3092\u9078\u3076", text: "\u6700\u59274\u7A2E\u985E\u307E\u3067\u9078\u629E\u53EF\u80FD\u30022\u301C3\u7A2E\u985E\u3067\u3082\u5185\u5BB9\u91CF\u306FBOX\u30B5\u30A4\u30BA\u306B\u5408\u308F\u305B\u307E\u3059\u3002" },
-  { title: "\u2462 \u6CE8\u6587\u3059\u308B", text: "\u30AB\u30FC\u30C8\u3067\u5185\u5BB9\u3092\u78BA\u8A8D\u3057\u3001\u3054\u6CE8\u6587\u624B\u7D9A\u304D\u3078\u304A\u9032\u307F\u304F\u3060\u3055\u3044\u3002" }
-];
-var FEATURES = [
-  { icon: "\u25A3", label: "\u5F53\u65E5\u914D\u9001\u5BFE\u5FDC" },
-  { icon: "\u25A4", label: "\u4E8B\u524D\u4E88\u7D04OK" },
-  { icon: "\u2665", label: "\u304A\u6C17\u306B\u5165\u308A\u767B\u9332" },
-  { icon: "\u25F7", label: "\u5C65\u6B74\u304B\u3089\u7C21\u5358\u518D\u6CE8\u6587" }
-];
-function AboutSection() {
-  return /* @__PURE__ */ React6.createElement("section", { className: "about-section", "aria-labelledby": "about-title" }, /* @__PURE__ */ React6.createElement("div", { className: "about-heading-row" }, /* @__PURE__ */ React6.createElement("h2", { id: "about-title" }, "ABOUT"), /* @__PURE__ */ React6.createElement("span", null, "\uFF08\u679C\u5B9F\u30E9\u30DC\u306B\u3064\u3044\u3066\uFF09")), /* @__PURE__ */ React6.createElement("p", { className: "about-lead" }, "\u65EC\u306E\u30AB\u30C3\u30C8\u30D5\u30EB\u30FC\u30C4\u3092\u3001\u6771\u4EAC\u30A8\u30EA\u30A2\u3078\u304A\u5C4A\u3051\u3002", /* @__PURE__ */ React6.createElement("br", null), "\u597D\u304D\u306A\u679C\u5B9F\u3092\u81EA\u7531\u306B\u7D44\u307F\u5408\u308F\u305B\u3066\u3001\u3042\u306A\u305F\u3060\u3051\u306EBOX\u3092\u3064\u304F\u308C\u307E\u3059\u3002"), /* @__PURE__ */ React6.createElement("div", { className: "about-ranking", "aria-label": "\u4EBA\u6C17\u30BB\u30C3\u30C8 \u30C8\u30C3\u30D73" }, RANKED_SETS.map(({ rank, item, tone }) => /* @__PURE__ */ React6.createElement("article", { className: `about-ranked-box about-rank-${rank}`, key: rank }, /* @__PURE__ */ React6.createElement("span", { className: "about-rank-badge", style: { "--badge-tone": tone } }, rank), /* @__PURE__ */ React6.createElement(BoxThumbnail, { fruits: item.fruits, width: "100%", height: "100%", ariaLabel: item.name }), /* @__PURE__ */ React6.createElement("p", null, item.name)))), /* @__PURE__ */ React6.createElement("div", { className: "about-steps" }, STEPS.map((step) => /* @__PURE__ */ React6.createElement("article", { className: "about-step-card", key: step.title }, /* @__PURE__ */ React6.createElement("h3", null, step.title), /* @__PURE__ */ React6.createElement("p", null, step.text)))), /* @__PURE__ */ React6.createElement("div", { className: "about-features", "aria-label": "\u30B5\u30FC\u30D3\u30B9\u306E\u7279\u5FB4" }, FEATURES.map((feature) => /* @__PURE__ */ React6.createElement("div", { key: feature.label }, /* @__PURE__ */ React6.createElement("span", { "aria-hidden": "true" }, feature.icon), /* @__PURE__ */ React6.createElement("p", null, feature.label)))));
-}
-
-// src/components/ProductCatalog.jsx
-import * as React7 from "react";
-var { useMemo: useMemo4, useState: useState3 } = React7;
-var PRODUCT_BASE = "img/fruits/All Products/";
-var REAL_BASE = "img/fruits/Real Fruit/";
-var PRODUCTS = [
-  { name: "\u3075\u3058\u308A\u3093\u3054", type: "Apple", art: "Apple/Red.jpg", real: "box-Apple-Red.jpg", tags: ["popular", "sweet"] },
-  { name: "\u738B\u6797\u308A\u3093\u3054", type: "Apple", art: "Apple/Green.jpg", real: "box-Apple-Green.jpg", tags: ["seasonal", "fresh"] },
-  { name: "\u30B7\u30CA\u30CE\u30B4\u30FC\u30EB\u30C9", type: "Apple", art: "Apple/Yellow.jpg", real: "box-Apple-Yellow.jpg", tags: ["seasonal", "fresh"] },
-  { name: "\u767D\u6843", type: "Peach", art: "Peach/Light.jpg", real: "box-Peach-Light.jpg", tags: ["popular", "sweet", "juicy"] },
-  { name: "\u3042\u304B\u3064\u304D\u6843", type: "Peach", art: "Peach/Pink.jpg", real: "box-Peach-Pink.jpg", tags: ["popular", "sweet", "juicy"] },
-  { name: "\u9EC4\u91D1\u6843", type: "Peach", art: "Peach/Yellow.jpg", real: "box-Peach-Yellow.jpg", tags: ["seasonal", "sweet", "juicy"] },
-  { name: "\u6DE1\u96EA", type: "Strawberry", art: "Strawberry/White.jpg", real: "real-Strawberry-White.jpg", tags: ["seasonal", "sweet"] },
-  { name: "\u3068\u3061\u304A\u3068\u3081", type: "Strawberry", art: "Strawberry/Red.jpg", real: "real-Strawberry-Red.jpg", tags: ["popular", "sweet"] },
-  { name: "\u3042\u307E\u304A\u3046", type: "Strawberry", art: "Strawberry/Dark.jpg", real: "real-Strawberry-Dark.jpg", tags: ["popular", "sweet", "juicy"] },
-  { name: "\u30E9\u30FB\u30D5\u30E9\u30F3\u30B9", type: "Pear", art: "Pear/La France.jpg", real: "real-Pear-La France.jpg", tags: ["seasonal", "juicy"] },
-  { name: "\u5E78\u6C34\u68A8", type: "Pear", art: "Pear/Kousui.jpg", real: "real-Pear-Kousui.jpg", tags: ["fresh", "juicy"] },
-  { name: "\u305B\u3068\u304B\u307F\u304B\u3093", type: "Orange", art: "Orange.jpg", real: "real-Orange-Setoka.jpg", tags: ["popular", "sweet", "juicy"] },
-  { name: "\u5DE8\u5CF0", type: "Grape", art: "Grape/Kyoho.jpg", real: "real-Grape-Kyoho.jpg", tags: ["seasonal", "sweet", "juicy"] },
-  { name: "\u30DE\u30B9\u30AB\u30C3\u30C8", type: "Grape", art: "Grape/Muscat.jpg", real: "real-Grape-Muscat.jpg", tags: ["popular", "fresh", "juicy"] },
-  { name: "\u30B0\u30EA\u30FC\u30F3\u30AD\u30A6\u30A4", type: "Kiwi", art: "Kiwi/Green.jpg", real: "real-Kiwi-Green.jpg", tags: ["fresh"] },
-  { name: "\u30EC\u30C3\u30C9\u30AD\u30A6\u30A4", type: "Kiwi", art: "Kiwi/Red.jpg", real: "real-Kiwi-Red.jpg", tags: ["seasonal", "sweet"] },
-  { name: "\u30B4\u30FC\u30EB\u30C9\u30AD\u30A6\u30A4", type: "Kiwi", art: "Kiwi/Yellow.jpg", real: "real-Kiwi-Yellow.jpg", tags: ["popular", "sweet"] },
-  { name: "\u30A4\u30F3\u30C9\u30DE\u30F3\u30B4\u30FC", type: "Mango", art: "Mango/Indo.jpg", real: "real-Mango-Indo.jpg", tags: ["tropical", "sweet"] },
-  { name: "\u30A2\u30FC\u30A6\u30A3\u30F3\u30DE\u30F3\u30B4\u30FC", type: "Mango", art: "Mango/Irwin.jpg", real: "real-Mango-Irwin.jpg", tags: ["tropical", "juicy"] },
-  { name: "\u7D05\u79C0\u5CF0", type: "Cherry", art: "Cherry/Beni.jpg", real: "real-Cherry-Beni.jpg", tags: ["seasonal", "sweet"] },
-  { name: "\u30A2\u30E1\u30EA\u30AB\u30F3\u30C1\u30A7\u30EA\u30FC", type: "Cherry", art: "Cherry/American.jpg", real: "real-Cherry-American.jpg", tags: ["popular", "sweet"] },
-  { name: "\u30B9\u30A4\u30AB", type: "Watermelon", art: "Watermelon/Red.jpg", real: "real-Watermelon-Red.jpg", tags: ["seasonal", "fresh", "juicy"] },
-  { name: "\u9EC4\u30B9\u30A4\u30AB", type: "Watermelon", art: "Watermelon/Red-1.jpg", real: "real-Watermelon-Yellow.jpg", tags: ["seasonal", "sweet", "juicy"] }
-].map((product, fruitId) => ({ ...product, fruitId }));
-var FILTERS = [
-  ["all", "\u3059\u3079\u3066"],
-  ["seasonal", "\u5B63\u7BC0\u306E\u30D5\u30EB\u30FC\u30C4"],
-  ["popular", "\u4EBA\u6C17\u30E9\u30F3\u30AD\u30F3\u30B0"],
-  ["sweet", "\u7518\u3081"],
-  ["fresh", "\u3055\u3063\u3071\u308A"],
-  ["juicy", "\u30B8\u30E5\u30FC\u30B7\u30FC"],
-  ["tropical", "\u30C8\u30ED\u30D4\u30AB\u30EB"]
-];
-var PAGE_SIZE = 15;
-var DISPLAY_PRODUCTS = [...PRODUCTS].sort((left, right) => {
-  const moveToEnd = (product) => {
-    if (product.type === "Pear") return 1;
-    if (product.type === "Peach" || product.type === "Strawberry") return 2;
-    return 0;
-  };
-  return moveToEnd(left) - moveToEnd(right);
-});
-function ProductCatalog({ favoriteFruitIds, toggleFavoriteFruit }) {
-  const [filter, setFilter] = useState3("all");
-  const [page, setPage] = useState3(0);
-  const [bagCount, setBagCount] = useState3(0);
-  const [notice, setNotice] = useState3("");
-  const filtered = useMemo4(() => DISPLAY_PRODUCTS.filter((item) => filter === "all" || item.tags.includes(filter)), [filter]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const chooseFilter = (id) => {
-    setFilter(id);
-    setPage(0);
-  };
-  const addProduct = (name) => {
-    setBagCount((count) => count + 1);
-    setNotice(`${name}\u3092\u30AB\u30FC\u30C8\u306B\u8FFD\u52A0\u3057\u307E\u3057\u305F`);
-    window.clearTimeout(addProduct.timer);
-    addProduct.timer = window.setTimeout(() => setNotice(""), 1800);
-  };
-  return /* @__PURE__ */ React7.createElement("section", { className: "products-section", "aria-labelledby": "products-title" }, /* @__PURE__ */ React7.createElement("div", { className: "products-title-row" }, /* @__PURE__ */ React7.createElement("div", { className: "products-heading" }, /* @__PURE__ */ React7.createElement("h2", { id: "products-title" }, "FRUITS"), /* @__PURE__ */ React7.createElement("span", null, "\uFF08\u5546\u54C1\u4E00\u89A7\uFF09")), /* @__PURE__ */ React7.createElement("div", { className: "products-toolbar" }, /* @__PURE__ */ React7.createElement("div", { className: "products-pagination", "aria-label": "\u5546\u54C1\u30DA\u30FC\u30B8" }, /* @__PURE__ */ React7.createElement("button", { type: "button", onClick: () => setPage((value) => Math.max(0, value - 1)), disabled: page === 0, "aria-label": "\u524D\u306E\u5546\u54C1" }, /* @__PURE__ */ React7.createElement("img", { src: "img/icon/jiantou.svg", alt: "" })), /* @__PURE__ */ React7.createElement("span", null, String(page + 1).padStart(2, "0"), " / ", String(pageCount).padStart(2, "0")), /* @__PURE__ */ React7.createElement("button", { type: "button", onClick: () => setPage((value) => Math.min(pageCount - 1, value + 1)), disabled: page >= pageCount - 1, "aria-label": "\u6B21\u306E\u5546\u54C1" }, /* @__PURE__ */ React7.createElement("img", { src: "img/icon/jiantou.svg", alt: "" }))), /* @__PURE__ */ React7.createElement("div", { className: "products-bag", "aria-label": `\u30AB\u30FC\u30C8 ${bagCount}\u70B9` }, /* @__PURE__ */ React7.createElement("span", { className: "products-bag-grid" }), /* @__PURE__ */ React7.createElement("b", null, bagCount)))), /* @__PURE__ */ React7.createElement("nav", { className: "products-filters", "aria-label": "\u5546\u54C1\u3092\u7D5E\u308A\u8FBC\u3080" }, FILTERS.map(([id, label]) => /* @__PURE__ */ React7.createElement("button", { type: "button", key: id, className: filter === id ? "is-active" : "", onClick: () => chooseFilter(id) }, label))), /* @__PURE__ */ React7.createElement("div", { className: "products-grid", "aria-live": "polite" }, visible.map((product, index) => /* @__PURE__ */ React7.createElement("article", { className: "product-card", key: product.name, style: { "--card-delay": `${index * 24}ms` } }, /* @__PURE__ */ React7.createElement("div", { className: "product-image-wrap" }, /* @__PURE__ */ React7.createElement("img", { className: "product-image product-image-art", src: `${PRODUCT_BASE}${product.art}`, alt: product.name }), /* @__PURE__ */ React7.createElement("img", { className: "product-image product-image-real", src: `${REAL_BASE}${product.real}`, alt: `${product.name}\u306E\u5B9F\u7269\u5199\u771F`, loading: "lazy" }), /* @__PURE__ */ React7.createElement("button", { type: "button", className: `product-favorite ${favoriteFruitIds.has(product.fruitId) ? "is-favorite" : ""}`, onClick: () => toggleFavoriteFruit(product.fruitId), "aria-label": `${product.name}\u3092\u304A\u6C17\u306B\u5165\u308A\u306B\u8FFD\u52A0`, "aria-pressed": favoriteFruitIds.has(product.fruitId) }, /* @__PURE__ */ React7.createElement("img", { src: favoriteFruitIds.has(product.fruitId) ? "img/icon/HeartUsed.svg" : "img/icon/HeartUnused.svg", alt: "" }))), /* @__PURE__ */ React7.createElement("div", { className: "product-card-footer" }, /* @__PURE__ */ React7.createElement("p", null, /* @__PURE__ */ React7.createElement("span", null, product.name), favoriteFruitIds.has(product.fruitId) ? /* @__PURE__ */ React7.createElement("img", { className: "product-name-heart", src: "img/icon/HeartUsed.svg", alt: "\u304A\u6C17\u306B\u5165\u308A" }) : null), /* @__PURE__ */ React7.createElement("button", { type: "button", className: "product-add", onClick: () => addProduct(product.name), "aria-label": `${product.name}\u3092\u30AB\u30FC\u30C8\u306B\u8FFD\u52A0` }, "\uFF0B"))))), notice ? /* @__PURE__ */ React7.createElement("div", { className: "product-toast", role: "status" }, notice) : null);
-}
-
 // src/components/CartDrawer.jsx
-import * as React8 from "react";
 function CartDrawer({
   cartOpen,
   cartLayoutProgress,
@@ -2070,7 +1978,24 @@ function CartDrawer({
   formatYen,
   cartTotal
 }) {
-  return /* @__PURE__ */ React8.createElement(
+  const [cartScrollbarVisible, setCartScrollbarVisible] = React6.useState(false);
+  const scrollHideTimerRef = React6.useRef(null);
+  const handleCartScroll = () => {
+    setCartScrollbarVisible(true);
+    window.clearTimeout(scrollHideTimerRef.current);
+    scrollHideTimerRef.current = window.setTimeout(() => {
+      setCartScrollbarVisible(false);
+    }, 650);
+  };
+  React6.useEffect(() => () => {
+    window.clearTimeout(scrollHideTimerRef.current);
+  }, []);
+  React6.useEffect(() => {
+    if (cartOpen) return;
+    window.clearTimeout(scrollHideTimerRef.current);
+    setCartScrollbarVisible(false);
+  }, [cartOpen]);
+  return /* @__PURE__ */ React6.createElement(
     "aside",
     {
       onPointerDown: (e) => e.stopPropagation(),
@@ -2093,7 +2018,7 @@ function CartDrawer({
         pointerEvents: cartLayoutProgress > 0.98 ? "auto" : "none"
       }
     },
-    /* @__PURE__ */ React8.createElement(
+    /* @__PURE__ */ React6.createElement(
       "div",
       {
         style: {
@@ -2103,8 +2028,8 @@ function CartDrawer({
           justifyContent: "space-between"
         }
       },
-      /* @__PURE__ */ React8.createElement("div", { style: { font: "400 28px/1 -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: 0 } }, "CART"),
-      /* @__PURE__ */ React8.createElement(
+      /* @__PURE__ */ React6.createElement("div", { style: { font: "400 28px/1 -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: 0 } }, "CART"),
+      /* @__PURE__ */ React6.createElement(
         "button",
         {
           type: "button",
@@ -2123,290 +2048,298 @@ function CartDrawer({
             cursor: "pointer"
           }
         },
-        /* @__PURE__ */ React8.createElement("span", { "aria-hidden": "true", style: { position: "relative", width: 19, height: 19, display: "block" } }, /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 1, top: 8.5, width: 17, height: 1.4, background: "#111111", transform: "rotate(45deg)", transformOrigin: "center" } }), /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 1, top: 8.5, width: 17, height: 1.4, background: "#111111", transform: "rotate(-45deg)", transformOrigin: "center" } }))
+        /* @__PURE__ */ React6.createElement("span", { "aria-hidden": "true", style: { position: "relative", width: 19, height: 19, display: "block" } }, /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 1, top: 8.5, width: 17, height: 1.4, background: "#111111", transform: "rotate(45deg)", transformOrigin: "center" } }), /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 1, top: 8.5, width: 17, height: 1.4, background: "#111111", transform: "rotate(-45deg)", transformOrigin: "center" } }))
       )
     ),
-    /* @__PURE__ */ React8.createElement("div", { style: { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "0 28px" } }, cartBoxes.length === 0 ? /* @__PURE__ */ React8.createElement(
+    /* @__PURE__ */ React6.createElement(
       "div",
       {
-        "data-cart-empty": true,
-        style: {
-          minHeight: 180,
-          display: "grid",
-          placeItems: "center",
-          color: "#8B9298",
-          font: "400 12px/1.4 -apple-system, BlinkMacSystemFont, sans-serif"
-        }
+        className: `cart-scroll-area${cartScrollbarVisible ? " is-scrolling" : ""}`,
+        onScroll: handleCartScroll,
+        style: { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "0 28px" }
       },
-      "\u30AB\u30FC\u30C8\u306F\u7A7A\u3067\u3059"
-    ) : cartBoxes.map((box) => {
-      const expanded = expandedCartBoxIds.includes(box.id);
-      const entering = enteringCartBoxIds.includes(box.id);
-      const removing = removingCartBoxIds.includes(box.id);
-      const editing = editingCartBoxId === box.id;
-      const activeEditing = cartEditSession?.boxId === box.id;
-      const fruits = box.items.map((item) => FRUIT_ITEMS[item.appleId]).filter(Boolean);
-      return /* @__PURE__ */ React8.createElement(
-        "section",
+      cartBoxes.length === 0 ? /* @__PURE__ */ React6.createElement(
+        "div",
         {
-          key: box.id,
-          "data-cart-box": box.id,
+          "data-cart-empty": true,
           style: {
-            borderBottom: activeEditing ? "1px solid transparent" : "1px solid #D9DEE3",
-            background: activeEditing ? "#C8FF00" : "transparent",
-            // 荧光编辑标记向侧栏两边延伸，内边距抵消后不改变内容位置。
-            margin: activeEditing ? "-1px -12px 0" : 0,
-            padding: activeEditing ? "1px 12px 0" : 0,
-            borderRadius: activeEditing ? 8 : 0,
-            position: "relative",
-            zIndex: activeEditing ? 1 : "auto",
-            overflow: "hidden",
-            pointerEvents: removing ? "none" : "auto",
-            animation: removing ? `cartBoxSlideOut ${CART_BOX_LIST_MOTION_MS}ms ${CART_BOX_LIST_MOTION_EASING} forwards` : entering ? `cartBoxSlideIn ${CART_BOX_LIST_MOTION_MS}ms ${CART_BOX_LIST_MOTION_EASING} both` : "none",
-            transition: "background-color 220ms ease, border-radius 220ms ease"
+            minHeight: 180,
+            display: "grid",
+            placeItems: "center",
+            color: "#8B9298",
+            font: "400 12px/1.4 -apple-system, BlinkMacSystemFont, sans-serif"
           }
         },
-        /* @__PURE__ */ React8.createElement(
-          "div",
+        "\u30AB\u30FC\u30C8\u306F\u7A7A\u3067\u3059"
+      ) : cartBoxes.map((box) => {
+        const expanded = expandedCartBoxIds.includes(box.id);
+        const entering = enteringCartBoxIds.includes(box.id);
+        const removing = removingCartBoxIds.includes(box.id);
+        const editing = editingCartBoxId === box.id;
+        const activeEditing = cartEditSession?.boxId === box.id;
+        const fruits = box.items.map((item) => FRUIT_ITEMS[item.appleId]).filter(Boolean);
+        return /* @__PURE__ */ React6.createElement(
+          "section",
           {
-            role: "button",
-            tabIndex: 0,
-            "aria-expanded": expanded,
-            onClick: () => toggleCartBoxExpanded(box.id),
-            onKeyDown: (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                toggleCartBoxExpanded(box.id);
-              }
-            },
+            key: box.id,
+            "data-cart-box": box.id,
             style: {
-              minHeight: 54,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-              outline: "none"
+              borderBottom: activeEditing ? "1px solid transparent" : "1px solid #D9DEE3",
+              background: activeEditing ? "#C8FF00" : "transparent",
+              // 荧光编辑标记向侧栏两边延伸，内边距抵消后不改变内容位置。
+              margin: activeEditing ? "-1px -12px 0" : 0,
+              padding: activeEditing ? "1px 12px 0" : 0,
+              borderRadius: activeEditing ? 8 : 0,
+              position: "relative",
+              zIndex: activeEditing ? 1 : "auto",
+              overflow: "hidden",
+              pointerEvents: removing ? "none" : "auto",
+              animation: removing ? `cartBoxSlideOut ${CART_BOX_LIST_MOTION_MS}ms ${CART_BOX_LIST_MOTION_EASING} forwards` : entering ? `cartBoxSlideIn ${CART_BOX_LIST_MOTION_MS}ms ${CART_BOX_LIST_MOTION_EASING} both` : "none",
+              transition: "background-color 220ms ease, border-radius 220ms ease"
             }
           },
-          editing ? /* @__PURE__ */ React8.createElement(
-            "input",
-            {
-              autoFocus: true,
-              "aria-label": "\u30DC\u30C3\u30AF\u30B9\u540D",
-              value: box.name,
-              maxLength: 20,
-              onClick: (e) => e.stopPropagation(),
-              onPointerDown: (e) => e.stopPropagation(),
-              onChange: (e) => updateCartBox(box.id, { name: e.target.value }),
-              onKeyDown: (e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") e.currentTarget.blur();
-                if (e.key === "Escape") {
-                  updateCartBox(box.id, { name: box.name.trim() || `BOX ${box.boxNumber}` });
-                  setEditingCartBoxId(null);
-                }
-              },
-              onBlur: () => {
-                if (!box.name.trim()) updateCartBox(box.id, { name: `BOX ${box.boxNumber}` });
-                setEditingCartBoxId(null);
-              },
-              style: {
-                width: 92,
-                height: 24,
-                padding: "0 4px",
-                border: "1px solid #AEB5BB",
-                borderRadius: 3,
-                boxSizing: "border-box",
-                background: "#ffffff",
-                color: "#111111",
-                font: "400 13px/1 -apple-system, BlinkMacSystemFont, sans-serif",
-                letterSpacing: 0
-              }
-            }
-          ) : /* @__PURE__ */ React8.createElement(
-            "button",
-            {
-              type: "button",
-              title: box.name,
-              onClick: (e) => {
-                e.stopPropagation();
-                setEditingCartBoxId(box.id);
-              },
-              onPointerDown: (e) => e.stopPropagation(),
-              style: {
-                minWidth: 0,
-                maxWidth: 96,
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                color: "#111111",
-                cursor: "text",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                textAlign: "left",
-                font: "400 14px/1 -apple-system, BlinkMacSystemFont, sans-serif"
-              }
-            },
-            box.name
-          ),
-          /* @__PURE__ */ React8.createElement(
-            "span",
-            {
-              style: {
-                flex: "0 0 auto",
-                minWidth: 22,
-                height: 20,
-                padding: "0 6px",
-                borderRadius: 3,
-                boxSizing: "border-box",
-                background: "#E7EAED",
-                color: "#5E666D",
-                display: "grid",
-                placeItems: "center",
-                font: "500 10px/1 -apple-system, BlinkMacSystemFont, sans-serif"
-              }
-            },
-            box.size
-          ),
-          /* @__PURE__ */ React8.createElement(
-            "button",
-            {
-              type: "button",
-              onClick: (e) => {
-                e.stopPropagation();
-                if (activeEditing) {
-                  cancelCartBoxEdit();
-                } else {
-                  beginCartBoxEdit(box);
-                }
-              },
-              onPointerDown: (e) => e.stopPropagation(),
-              "aria-label": activeEditing ? `${box.name}\u306E\u7DE8\u96C6\u3092\u30AD\u30E3\u30F3\u30BB\u30EB` : `${box.name}\u3092\u7DE8\u96C6`,
-              style: {
-                flex: "0 0 auto",
-                height: 22,
-                padding: activeEditing ? "0 7px 0 10px" : "0 10px",
-                border: activeEditing ? 0 : "1px solid #9AA1A7",
-                borderRadius: 999,
-                boxSizing: "border-box",
-                background: activeEditing ? "rgba(255,255,255,0.58)" : "#ffffff",
-                color: activeEditing ? "#555555" : "#111111",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: activeEditing ? 5 : 0,
-                font: "500 10px/1 -apple-system, BlinkMacSystemFont, sans-serif",
-                letterSpacing: 0
-              }
-            },
-            /* @__PURE__ */ React8.createElement("span", null, activeEditing ? "\u7DE8\u96C6\u4E2D" : "\u7DE8\u96C6"),
-            activeEditing ? /* @__PURE__ */ React8.createElement("span", { "aria-hidden": "true", style: { position: "relative", width: 9, height: 9, display: "block", flex: "0 0 auto" } }, /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 0.5, top: 4, width: 8, height: 1, background: "#555555", transform: "rotate(45deg)", transformOrigin: "center" } }), /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 0.5, top: 4, width: 8, height: 1, background: "#555555", transform: "rotate(-45deg)", transformOrigin: "center" } })) : null
-          ),
-          /* @__PURE__ */ React8.createElement("span", { style: { flex: "1 1 auto" } }),
-          /* @__PURE__ */ React8.createElement("span", { style: { flex: "0 0 auto", whiteSpace: "nowrap", font: "400 11px/1 sans-serif" } }, box.price.toLocaleString("ja-JP"), "\u5186"),
-          /* @__PURE__ */ React8.createElement(
-            "span",
-            {
-              onClick: (e) => e.stopPropagation(),
-              onPointerDown: (e) => e.stopPropagation(),
-              style: {
-                height: 20,
-                display: "grid",
-                gridTemplateColumns: "18px 28px 18px",
-                border: "1px solid #BFC5CB",
-                boxSizing: "border-box"
-              }
-            },
-            /* @__PURE__ */ React8.createElement(
-              "button",
-              {
-                type: "button",
-                "aria-label": `${box.name}\u30921\u500B\u6E1B\u3089\u3059`,
-                disabled: box.quantity <= 1,
-                onClick: () => setCartBoxQuantity(box.id, box.quantity - 1),
-                style: { border: 0, borderRight: "1px solid #BFC5CB", padding: 0, background: "transparent", cursor: box.quantity > 1 ? "pointer" : "default", color: box.quantity > 1 ? "#111111" : "#AEB5BB" }
-              },
-              "\u2212"
-            ),
-            /* @__PURE__ */ React8.createElement(
-              "input",
-              {
-                className: "cart-quantity-input",
-                "aria-label": `${box.name}\u306E\u6570\u91CF`,
-                type: "number",
-                min: "1",
-                max: "99",
-                value: box.quantity,
-                onChange: (e) => setCartBoxQuantity(box.id, e.target.value),
-                style: { width: 28, minWidth: 0, border: 0, padding: 0, textAlign: "center", background: "transparent", color: "#111111", font: "400 11px/1 sans-serif", outline: "none" }
-              }
-            ),
-            /* @__PURE__ */ React8.createElement(
-              "button",
-              {
-                type: "button",
-                "aria-label": `${box.name}\u30921\u500B\u5897\u3084\u3059`,
-                disabled: box.quantity >= 99,
-                onClick: () => setCartBoxQuantity(box.id, box.quantity + 1),
-                style: { border: 0, borderLeft: "1px solid #BFC5CB", padding: 0, background: "transparent", cursor: box.quantity < 99 ? "pointer" : "default", color: box.quantity < 99 ? "#111111" : "#AEB5BB" }
-              },
-              "\uFF0B"
-            )
-          ),
-          /* @__PURE__ */ React8.createElement(
-            "button",
-            {
-              type: "button",
-              "aria-label": `${box.name}\u3092\u524A\u9664`,
-              onClick: (e) => {
-                e.stopPropagation();
-                removeCartBox(box.id);
-              },
-              style: { width: 18, height: 22, border: 0, padding: 0, background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }
-            },
-            /* @__PURE__ */ React8.createElement("span", { style: { position: "relative", width: 10, height: 12, display: "block" } }, /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 2, top: 3, width: 6, height: 7, border: "1px solid #737A80", borderTop: 0, boxSizing: "border-box" } }), /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 1, top: 2, width: 8, height: 1, background: "#737A80" } }), /* @__PURE__ */ React8.createElement("span", { style: { position: "absolute", left: 3.5, top: 0, width: 3, height: 1, background: "#737A80" } }))
-          )
-        ),
-        /* @__PURE__ */ React8.createElement(
-          "div",
-          {
-            "aria-hidden": !expanded,
-            style: {
-              display: "grid",
-              gridTemplateRows: expanded ? "1fr" : "0fr",
-              transition: "grid-template-rows 320ms cubic-bezier(.2,.8,.2,1)"
-            }
-          },
-          /* @__PURE__ */ React8.createElement("div", { style: { minHeight: 0, overflow: "hidden" } }, /* @__PURE__ */ React8.createElement(
+          /* @__PURE__ */ React6.createElement(
             "div",
             {
+              role: "button",
+              tabIndex: 0,
+              "aria-expanded": expanded,
+              onClick: () => toggleCartBoxExpanded(box.id),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleCartBoxExpanded(box.id);
+                }
+              },
               style: {
-                display: "grid",
-                gridTemplateColumns: "108px 1fr",
-                columnGap: 14,
-                padding: "4px 0 20px",
-                opacity: expanded ? 1 : 0,
-                transform: `translateY(${expanded ? 0 : -6}px)`,
-                transition: "opacity 220ms ease, transform 320ms cubic-bezier(.2,.8,.2,1)",
-                pointerEvents: expanded ? "auto" : "none"
+                minHeight: 54,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                outline: "none"
               }
             },
-            /* @__PURE__ */ React8.createElement(
-              BoxThumbnail,
+            editing ? /* @__PURE__ */ React6.createElement(
+              "input",
               {
-                fruits: box.items,
-                width: 108,
-                height: 82,
-                ariaLabel: `${box.name}\u306E\u5185\u5BB9`
+                autoFocus: true,
+                "aria-label": "\u30DC\u30C3\u30AF\u30B9\u540D",
+                value: box.name,
+                maxLength: 20,
+                onClick: (e) => e.stopPropagation(),
+                onPointerDown: (e) => e.stopPropagation(),
+                onChange: (e) => updateCartBox(box.id, { name: e.target.value }),
+                onKeyDown: (e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    updateCartBox(box.id, { name: box.name.trim() || `BOX ${box.boxNumber}` });
+                    setEditingCartBoxId(null);
+                  }
+                },
+                onBlur: () => {
+                  if (!box.name.trim()) updateCartBox(box.id, { name: `BOX ${box.boxNumber}` });
+                  setEditingCartBoxId(null);
+                },
+                style: {
+                  width: 92,
+                  height: 24,
+                  padding: "0 4px",
+                  border: "1px solid #AEB5BB",
+                  borderRadius: 3,
+                  boxSizing: "border-box",
+                  background: "#ffffff",
+                  color: "#111111",
+                  font: "400 13px/1 -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: 0
+                }
               }
+            ) : /* @__PURE__ */ React6.createElement(
+              "button",
+              {
+                type: "button",
+                title: box.name,
+                onClick: (e) => {
+                  e.stopPropagation();
+                  setEditingCartBoxId(box.id);
+                },
+                onPointerDown: (e) => e.stopPropagation(),
+                style: {
+                  minWidth: 0,
+                  maxWidth: 96,
+                  padding: 0,
+                  border: 0,
+                  background: "transparent",
+                  color: "#111111",
+                  cursor: "text",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  textAlign: "left",
+                  font: "400 14px/1 -apple-system, BlinkMacSystemFont, sans-serif"
+                }
+              },
+              box.name
             ),
-            /* @__PURE__ */ React8.createElement("div", { style: { display: "grid", alignContent: "start", gap: 5, paddingTop: 2 } }, fruits.map((fruit, index) => /* @__PURE__ */ React8.createElement("div", { key: `${fruit.name}-${index}`, style: { font: "400 11px/1.25 -apple-system, BlinkMacSystemFont, sans-serif", color: "#111111" } }, fruit.name, " ", /* @__PURE__ */ React8.createElement("span", { style: { color: "#777D82" } }, "(200g)"))))
-          ))
-        )
-      );
-    })),
-    /* @__PURE__ */ React8.createElement(
+            /* @__PURE__ */ React6.createElement(
+              "span",
+              {
+                style: {
+                  flex: "0 0 auto",
+                  minWidth: 22,
+                  height: 20,
+                  padding: "0 6px",
+                  borderRadius: 3,
+                  boxSizing: "border-box",
+                  background: "#E7EAED",
+                  color: "#5E666D",
+                  display: "grid",
+                  placeItems: "center",
+                  font: "500 10px/1 -apple-system, BlinkMacSystemFont, sans-serif"
+                }
+              },
+              box.size
+            ),
+            /* @__PURE__ */ React6.createElement(
+              "button",
+              {
+                type: "button",
+                onClick: (e) => {
+                  e.stopPropagation();
+                  if (activeEditing) {
+                    cancelCartBoxEdit();
+                  } else {
+                    beginCartBoxEdit(box);
+                  }
+                },
+                onPointerDown: (e) => e.stopPropagation(),
+                "aria-label": activeEditing ? `${box.name}\u306E\u7DE8\u96C6\u3092\u30AD\u30E3\u30F3\u30BB\u30EB` : `${box.name}\u3092\u7DE8\u96C6`,
+                style: {
+                  flex: "0 0 auto",
+                  height: 22,
+                  padding: activeEditing ? "0 7px 0 10px" : "0 10px",
+                  border: activeEditing ? 0 : "1px solid #9AA1A7",
+                  borderRadius: 999,
+                  boxSizing: "border-box",
+                  background: activeEditing ? "rgba(255,255,255,0.58)" : "#ffffff",
+                  color: activeEditing ? "#555555" : "#111111",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: activeEditing ? 5 : 0,
+                  font: "500 10px/1 -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: 0
+                }
+              },
+              /* @__PURE__ */ React6.createElement("span", null, activeEditing ? "\u7DE8\u96C6\u4E2D" : "\u7DE8\u96C6"),
+              activeEditing ? /* @__PURE__ */ React6.createElement("span", { "aria-hidden": "true", style: { position: "relative", width: 9, height: 9, display: "block", flex: "0 0 auto" } }, /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 0.5, top: 4, width: 8, height: 1, background: "#555555", transform: "rotate(45deg)", transformOrigin: "center" } }), /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 0.5, top: 4, width: 8, height: 1, background: "#555555", transform: "rotate(-45deg)", transformOrigin: "center" } })) : null
+            ),
+            /* @__PURE__ */ React6.createElement("span", { style: { flex: "1 1 auto" } }),
+            /* @__PURE__ */ React6.createElement("span", { style: { flex: "0 0 auto", whiteSpace: "nowrap", font: "400 11px/1 sans-serif" } }, box.price.toLocaleString("ja-JP"), "\u5186"),
+            /* @__PURE__ */ React6.createElement(
+              "span",
+              {
+                onClick: (e) => e.stopPropagation(),
+                onPointerDown: (e) => e.stopPropagation(),
+                style: {
+                  height: 20,
+                  display: "grid",
+                  gridTemplateColumns: "18px 28px 18px",
+                  border: "1px solid #BFC5CB",
+                  boxSizing: "border-box"
+                }
+              },
+              /* @__PURE__ */ React6.createElement(
+                "button",
+                {
+                  type: "button",
+                  "aria-label": `${box.name}\u30921\u500B\u6E1B\u3089\u3059`,
+                  disabled: box.quantity <= 1,
+                  onClick: () => setCartBoxQuantity(box.id, box.quantity - 1),
+                  style: { border: 0, borderRight: "1px solid #BFC5CB", padding: 0, background: "transparent", cursor: box.quantity > 1 ? "pointer" : "default", color: box.quantity > 1 ? "#111111" : "#AEB5BB" }
+                },
+                "\u2212"
+              ),
+              /* @__PURE__ */ React6.createElement(
+                "input",
+                {
+                  className: "cart-quantity-input",
+                  "aria-label": `${box.name}\u306E\u6570\u91CF`,
+                  type: "number",
+                  min: "1",
+                  max: "99",
+                  value: box.quantity,
+                  onChange: (e) => setCartBoxQuantity(box.id, e.target.value),
+                  style: { width: 28, minWidth: 0, border: 0, padding: 0, textAlign: "center", background: "transparent", color: "#111111", font: "400 11px/1 sans-serif", outline: "none" }
+                }
+              ),
+              /* @__PURE__ */ React6.createElement(
+                "button",
+                {
+                  type: "button",
+                  "aria-label": `${box.name}\u30921\u500B\u5897\u3084\u3059`,
+                  disabled: box.quantity >= 99,
+                  onClick: () => setCartBoxQuantity(box.id, box.quantity + 1),
+                  style: { border: 0, borderLeft: "1px solid #BFC5CB", padding: 0, background: "transparent", cursor: box.quantity < 99 ? "pointer" : "default", color: box.quantity < 99 ? "#111111" : "#AEB5BB" }
+                },
+                "\uFF0B"
+              )
+            ),
+            /* @__PURE__ */ React6.createElement(
+              "button",
+              {
+                type: "button",
+                "aria-label": `${box.name}\u3092\u524A\u9664`,
+                onClick: (e) => {
+                  e.stopPropagation();
+                  removeCartBox(box.id);
+                },
+                style: { width: 18, height: 22, border: 0, padding: 0, background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }
+              },
+              /* @__PURE__ */ React6.createElement("span", { style: { position: "relative", width: 10, height: 12, display: "block" } }, /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 2, top: 3, width: 6, height: 7, border: "1px solid #737A80", borderTop: 0, boxSizing: "border-box" } }), /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 1, top: 2, width: 8, height: 1, background: "#737A80" } }), /* @__PURE__ */ React6.createElement("span", { style: { position: "absolute", left: 3.5, top: 0, width: 3, height: 1, background: "#737A80" } }))
+            )
+          ),
+          /* @__PURE__ */ React6.createElement(
+            "div",
+            {
+              "aria-hidden": !expanded,
+              style: {
+                display: "grid",
+                gridTemplateRows: expanded ? "1fr" : "0fr",
+                transition: "grid-template-rows 320ms cubic-bezier(.2,.8,.2,1)"
+              }
+            },
+            /* @__PURE__ */ React6.createElement("div", { style: { minHeight: 0, overflow: "hidden" } }, /* @__PURE__ */ React6.createElement(
+              "div",
+              {
+                style: {
+                  display: "grid",
+                  gridTemplateColumns: "108px 1fr",
+                  columnGap: 14,
+                  padding: "4px 0 20px",
+                  opacity: expanded ? 1 : 0,
+                  transform: `translateY(${expanded ? 0 : -6}px)`,
+                  transition: "opacity 220ms ease, transform 320ms cubic-bezier(.2,.8,.2,1)",
+                  pointerEvents: expanded ? "auto" : "none"
+                }
+              },
+              /* @__PURE__ */ React6.createElement(
+                BoxThumbnail,
+                {
+                  fruits: box.items,
+                  width: 108,
+                  height: 82,
+                  ariaLabel: `${box.name}\u306E\u5185\u5BB9`
+                }
+              ),
+              /* @__PURE__ */ React6.createElement("div", { style: { display: "grid", alignContent: "start", gap: 5, paddingTop: 2 } }, fruits.map((fruit, index) => /* @__PURE__ */ React6.createElement("div", { key: `${fruit.name}-${index}`, style: { font: "400 11px/1.25 -apple-system, BlinkMacSystemFont, sans-serif", color: "#111111" } }, fruit.name, " ", /* @__PURE__ */ React6.createElement("span", { style: { color: "#777D82" } }, "(200g)"))))
+            ))
+          )
+        );
+      })
+    ),
+    /* @__PURE__ */ React6.createElement(
       "div",
       {
         style: {
@@ -2414,8 +2347,8 @@ function CartDrawer({
           padding: "16px 28px 22px"
         }
       },
-      /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", justifyContent: "space-between", font: "400 15px/1 -apple-system, BlinkMacSystemFont, sans-serif" } }, /* @__PURE__ */ React8.createElement("span", null, "\u5408\u8A08"), /* @__PURE__ */ React8.createElement("span", { "data-cart-total": true }, formatYen(cartTotal))),
-      /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24 } }, /* @__PURE__ */ React8.createElement(
+      /* @__PURE__ */ React6.createElement("div", { style: { display: "flex", justifyContent: "space-between", font: "400 15px/1 -apple-system, BlinkMacSystemFont, sans-serif" } }, /* @__PURE__ */ React6.createElement("span", null, "\u5408\u8A08"), /* @__PURE__ */ React6.createElement("span", { "data-cart-total": true }, formatYen(cartTotal))),
+      /* @__PURE__ */ React6.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24 } }, /* @__PURE__ */ React6.createElement(
         "button",
         {
           type: "button",
@@ -2435,8 +2368,8 @@ function CartDrawer({
             transform: `translateX(${CART_FOOTER_ARROW_OFFSET_X}px)`
           }
         },
-        /* @__PURE__ */ React8.createElement("svg", { "aria-hidden": "true", width: "30", height: "16", viewBox: "0 0 30 16", style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React8.createElement("path", { d: "M0.7 8H24M18 2L24 8L18 14", fill: "none", stroke: "#111111", strokeWidth: "1.3", strokeLinecap: "round", strokeLinejoin: "round" }))
-      ), /* @__PURE__ */ React8.createElement(
+        /* @__PURE__ */ React6.createElement("svg", { "aria-hidden": "true", width: "30", height: "16", viewBox: "0 0 30 16", style: { display: "block", overflow: "visible" } }, /* @__PURE__ */ React6.createElement("path", { d: "M0.7 8H24M18 2L24 8L18 14", fill: "none", stroke: "#111111", strokeWidth: "1.3", strokeLinecap: "round", strokeLinejoin: "round" }))
+      ), /* @__PURE__ */ React6.createElement(
         "button",
         {
           type: "button",
@@ -2458,7 +2391,7 @@ function CartDrawer({
 }
 
 // src/components/TopCatalog.jsx
-import * as React9 from "react";
+import * as React7 from "react";
 function TopCatalog({
   activeCatalogCount,
   activeCatalogIndex,
@@ -2504,7 +2437,7 @@ function TopCatalog({
   toggleFavoriteFruit,
   turnFruitPage
 }) {
-  return /* @__PURE__ */ React9.createElement(React9.Fragment, null, /* @__PURE__ */ React9.createElement(
+  return /* @__PURE__ */ React7.createElement(React7.Fragment, null, /* @__PURE__ */ React7.createElement(
     "header",
     {
       style: {
@@ -2522,7 +2455,7 @@ function TopCatalog({
         boxSizing: "border-box"
       }
     },
-    /* @__PURE__ */ React9.createElement("div", { style: { display: "flex", alignItems: "center", gap: 26, minWidth: 0 } }, /* @__PURE__ */ React9.createElement(
+    /* @__PURE__ */ React7.createElement("div", { style: { display: "flex", alignItems: "center", gap: 26, minWidth: 0 } }, /* @__PURE__ */ React7.createElement(
       "img",
       {
         src: "img/icon/logo-yoko.svg",
@@ -2530,7 +2463,7 @@ function TopCatalog({
         draggable: false,
         style: { width: 178, height: "auto", display: "block", flexShrink: 0, userSelect: "none", WebkitUserDrag: "none" }
       }
-    ), /* @__PURE__ */ React9.createElement(
+    ), /* @__PURE__ */ React7.createElement(
       "span",
       {
         style: {
@@ -2542,7 +2475,7 @@ function TopCatalog({
       },
       "\u30D5\u30EB\u30FC\u30C4\u9078\u3073\u3001\u59CB\u3081\u3088\u3046\u3002"
     )),
-    /* @__PURE__ */ React9.createElement(
+    /* @__PURE__ */ React7.createElement(
       "div",
       {
         style: {
@@ -2552,7 +2485,7 @@ function TopCatalog({
           flexShrink: 0
         }
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "button",
         {
           type: "button",
@@ -2572,7 +2505,7 @@ function TopCatalog({
             cursor: "pointer"
           }
         },
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "img",
           {
             src: "img/icon/zixun.svg",
@@ -2581,9 +2514,9 @@ function TopCatalog({
             style: { width: 18, height: 19, display: "block", userSelect: "none", WebkitUserDrag: "none" }
           }
         ),
-        /* @__PURE__ */ React9.createElement("span", null, "\u304A\u554F\u3044\u5408\u308F\u305B")
+        /* @__PURE__ */ React7.createElement("span", null, "\u304A\u554F\u3044\u5408\u308F\u305B")
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "button",
         {
           type: "button",
@@ -2607,7 +2540,7 @@ function TopCatalog({
         "login"
       )
     )
-  ), /* @__PURE__ */ React9.createElement(
+  ), /* @__PURE__ */ React7.createElement(
     "div",
     {
       onContextMenu: (e) => e.preventDefault(),
@@ -2627,7 +2560,7 @@ function TopCatalog({
         userSelect: "none"
       }
     },
-    canScrollPrev ? /* @__PURE__ */ React9.createElement(
+    canScrollPrev ? /* @__PURE__ */ React7.createElement(
       "button",
       {
         type: "button",
@@ -2651,7 +2584,7 @@ function TopCatalog({
         },
         "aria-label": "\u524D\u306E\u679C\u7269"
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "img",
         {
           src: "img/icon/jiantou.svg",
@@ -2661,7 +2594,7 @@ function TopCatalog({
         }
       )
     ) : null,
-    /* @__PURE__ */ React9.createElement(
+    /* @__PURE__ */ React7.createElement(
       "div",
       {
         onPointerDown: onFruitStripPointerDown,
@@ -2675,7 +2608,7 @@ function TopCatalog({
           touchAction: "pan-y"
         }
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           "data-catalog-mask": "true",
@@ -2687,7 +2620,7 @@ function TopCatalog({
             left: catalogMaskLeft
           }
         },
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             style: {
@@ -2705,7 +2638,7 @@ function TopCatalog({
           isFruitCatalog ? FRUIT_DISPLAY_ORDER.map((id) => {
             const fruit = FRUIT_ITEMS[id];
             const isFavorite = favoriteFruitIds.has(id);
-            return /* @__PURE__ */ React9.createElement("div", { className: "top-fruit-item", key: fruit.name }, /* @__PURE__ */ React9.createElement(
+            return /* @__PURE__ */ React7.createElement("div", { className: "top-fruit-item", key: fruit.name }, /* @__PURE__ */ React7.createElement(
               "button",
               {
                 type: "button",
@@ -2715,7 +2648,7 @@ function TopCatalog({
                 onContextMenu: (e) => e.preventDefault(),
                 "aria-label": fruit.name
               },
-              /* @__PURE__ */ React9.createElement(
+              /* @__PURE__ */ React7.createElement(
                 "img",
                 {
                   src: fruit.wholeSrc,
@@ -2724,8 +2657,8 @@ function TopCatalog({
                   alt: ""
                 }
               ),
-              /* @__PURE__ */ React9.createElement("span", { className: "top-fruit-name" }, /* @__PURE__ */ React9.createElement("span", null, fruit.name), isFavorite ? /* @__PURE__ */ React9.createElement("img", { src: "img/icon/HeartUsed.svg", alt: "\u304A\u6C17\u306B\u5165\u308A" }) : null)
-            ), /* @__PURE__ */ React9.createElement(
+              /* @__PURE__ */ React7.createElement("span", { className: "top-fruit-name" }, /* @__PURE__ */ React7.createElement("span", null, fruit.name), isFavorite ? /* @__PURE__ */ React7.createElement("img", { src: "img/icon/HeartUsed.svg", alt: "\u304A\u6C17\u306B\u5165\u308A" }) : null)
+            ), /* @__PURE__ */ React7.createElement(
               "button",
               {
                 type: "button",
@@ -2738,11 +2671,11 @@ function TopCatalog({
                 "aria-label": `${fruit.name}\u3092\u304A\u6C17\u306B\u5165\u308A\u306B\u8FFD\u52A0`,
                 "aria-pressed": isFavorite
               },
-              /* @__PURE__ */ React9.createElement("img", { src: isFavorite ? "img/icon/HeartUsed.svg" : "img/icon/HeartUnused.svg", alt: "" })
+              /* @__PURE__ */ React7.createElement("img", { src: isFavorite ? "img/icon/HeartUsed.svg" : "img/icon/HeartUnused.svg", alt: "" })
             ));
           }) : activeCatalogItems.map((item, index) => {
             const activeCombo = openComboIndex === index;
-            return /* @__PURE__ */ React9.createElement(
+            return /* @__PURE__ */ React7.createElement(
               "div",
               {
                 key: `${activeCatalogTab}-${index}`,
@@ -2764,7 +2697,7 @@ function TopCatalog({
                   zIndex: activeCombo ? 80 : 1
                 }
               },
-              /* @__PURE__ */ React9.createElement(
+              /* @__PURE__ */ React7.createElement(
                 BoxThumbnail,
                 {
                   fruits: item.fruits,
@@ -2774,7 +2707,7 @@ function TopCatalog({
                   style: { position: "relative", zIndex: 1 }
                 }
               ),
-              /* @__PURE__ */ React9.createElement(
+              /* @__PURE__ */ React7.createElement(
                 "span",
                 {
                   style: {
@@ -2791,7 +2724,7 @@ function TopCatalog({
           })
         )
       ),
-      !isFruitCatalog && openComboIndex != null && activeCatalogItems[openComboIndex] ? /* @__PURE__ */ React9.createElement(
+      !isFruitCatalog && openComboIndex != null && activeCatalogItems[openComboIndex] ? /* @__PURE__ */ React7.createElement(
         "div",
         {
           "data-combo-ui": "true",
@@ -2817,7 +2750,7 @@ function TopCatalog({
             cursor: "pointer"
           }
         },
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             onPointerDown: (e) => onComboPointerDown(e, openComboIndex),
@@ -2829,7 +2762,7 @@ function TopCatalog({
               touchAction: "none"
             }
           },
-          /* @__PURE__ */ React9.createElement(
+          /* @__PURE__ */ React7.createElement(
             BoxThumbnail,
             {
               fruits: activeCatalogItems[openComboIndex].fruits,
@@ -2839,7 +2772,7 @@ function TopCatalog({
             }
           )
         ),
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             style: {
@@ -2852,7 +2785,7 @@ function TopCatalog({
           },
           activeCatalogItems[openComboIndex].name
         ),
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             style: {
@@ -2862,7 +2795,7 @@ function TopCatalog({
               gap: 6
             }
           },
-          activeCatalogItems[openComboIndex].fruits.map((fruit, fruitIndex) => /* @__PURE__ */ React9.createElement(
+          activeCatalogItems[openComboIndex].fruits.map((fruit, fruitIndex) => /* @__PURE__ */ React7.createElement(
             "div",
             {
               key: `${activeCatalogItems[openComboIndex].name}-${fruitIndex}`,
@@ -2874,7 +2807,7 @@ function TopCatalog({
                 minWidth: 0
               }
             },
-            /* @__PURE__ */ React9.createElement(
+            /* @__PURE__ */ React7.createElement(
               "img",
               {
                 src: fruit.iconSrc,
@@ -2889,7 +2822,7 @@ function TopCatalog({
                 }
               }
             ),
-            /* @__PURE__ */ React9.createElement(
+            /* @__PURE__ */ React7.createElement(
               "span",
               {
                 style: {
@@ -2905,7 +2838,7 @@ function TopCatalog({
             )
           ))
         ),
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "button",
           {
             type: "button",
@@ -2930,7 +2863,7 @@ function TopCatalog({
           "\u30DC\u30C3\u30AF\u30B9\u306B\u8FFD\u52A0"
         )
       ) : null,
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           style: {
@@ -2948,7 +2881,7 @@ function TopCatalog({
           }
         }
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           style: {
@@ -2966,7 +2899,7 @@ function TopCatalog({
           }
         }
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           style: {
@@ -2980,7 +2913,7 @@ function TopCatalog({
             pointerEvents: "none"
           }
         },
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             style: {
@@ -2995,7 +2928,7 @@ function TopCatalog({
         )
       )
     ),
-    canScrollNext ? /* @__PURE__ */ React9.createElement(
+    canScrollNext ? /* @__PURE__ */ React7.createElement(
       "button",
       {
         type: "button",
@@ -3019,7 +2952,7 @@ function TopCatalog({
         },
         "aria-label": "\u6B21\u306E\u679C\u7269"
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "img",
         {
           src: "img/icon/jiantou.svg",
@@ -3036,7 +2969,7 @@ function TopCatalog({
         }
       )
     ) : null,
-    /* @__PURE__ */ React9.createElement(
+    /* @__PURE__ */ React7.createElement(
       "div",
       {
         role: "tablist",
@@ -3057,7 +2990,7 @@ function TopCatalog({
           userSelect: "none"
         }
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           "aria-hidden": "true",
@@ -3069,7 +3002,7 @@ function TopCatalog({
             pointerEvents: "none"
           }
         },
-        CATALOG_TABS.map((tab, index) => /* @__PURE__ */ React9.createElement(
+        CATALOG_TABS.map((tab, index) => /* @__PURE__ */ React7.createElement(
           "div",
           {
             key: `base-${tab.id}`,
@@ -3085,7 +3018,7 @@ function TopCatalog({
           tab.label
         ))
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           "aria-hidden": "true",
@@ -3103,7 +3036,7 @@ function TopCatalog({
             pointerEvents: "none"
           }
         },
-        /* @__PURE__ */ React9.createElement(
+        /* @__PURE__ */ React7.createElement(
           "div",
           {
             style: {
@@ -3115,7 +3048,7 @@ function TopCatalog({
               transition: "transform 320ms cubic-bezier(.2,.8,.2,1)"
             }
           },
-          CATALOG_TABS.map((tab) => /* @__PURE__ */ React9.createElement(
+          CATALOG_TABS.map((tab) => /* @__PURE__ */ React7.createElement(
             "div",
             {
               key: `mask-${tab.id}`,
@@ -3131,7 +3064,7 @@ function TopCatalog({
           ))
         )
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "div",
         {
           style: {
@@ -3143,7 +3076,7 @@ function TopCatalog({
         },
         CATALOG_TABS.map((tab, index) => {
           const active = activeCatalogTab === tab.id;
-          return /* @__PURE__ */ React9.createElement(
+          return /* @__PURE__ */ React7.createElement(
             "button",
             {
               key: tab.id,
@@ -3177,7 +3110,7 @@ function TopCatalog({
         })
       )
     )
-  ), comboReplacePrompt ? /* @__PURE__ */ React9.createElement(
+  ), comboReplacePrompt ? /* @__PURE__ */ React7.createElement(
     "div",
     {
       onPointerDown: (e) => e.stopPropagation(),
@@ -3197,8 +3130,8 @@ function TopCatalog({
         textAlign: "center"
       }
     },
-    /* @__PURE__ */ React9.createElement("div", null, "\u73FE\u5728\u306E\u30DC\u30C3\u30AF\u30B9\u306E\u4E2D\u8EAB\u3092", /* @__PURE__ */ React9.createElement("br", null), "\u3053\u306E\u30BB\u30C3\u30C8\u306B\u5165\u308C\u66FF\u3048\u307E\u3059\u304B\uFF1F"),
-    /* @__PURE__ */ React9.createElement(
+    /* @__PURE__ */ React7.createElement("div", null, "\u73FE\u5728\u306E\u30DC\u30C3\u30AF\u30B9\u306E\u4E2D\u8EAB\u3092", /* @__PURE__ */ React7.createElement("br", null), "\u3053\u306E\u30BB\u30C3\u30C8\u306B\u5165\u308C\u66FF\u3048\u307E\u3059\u304B\uFF1F"),
+    /* @__PURE__ */ React7.createElement(
       "div",
       {
         style: {
@@ -3208,7 +3141,7 @@ function TopCatalog({
           marginTop: 14
         }
       },
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "button",
         {
           type: "button",
@@ -3225,7 +3158,7 @@ function TopCatalog({
         },
         "\u5165\u308C\u66FF\u3048\u308B"
       ),
-      /* @__PURE__ */ React9.createElement(
+      /* @__PURE__ */ React7.createElement(
         "button",
         {
           type: "button",
@@ -3247,7 +3180,7 @@ function TopCatalog({
 }
 
 // src/components/PageOverlayControls.jsx
-import React10 from "react";
+import React8 from "react";
 function PageOverlayControls({
   activeCartEditBox,
   addBoxToCart,
@@ -3262,7 +3195,7 @@ function PageOverlayControls({
   requestedSize,
   startSizeChange
 }) {
-  return /* @__PURE__ */ React10.createElement(React10.Fragment, null, activeCartEditBox ? /* @__PURE__ */ React10.createElement(
+  return /* @__PURE__ */ React8.createElement(React8.Fragment, null, activeCartEditBox ? /* @__PURE__ */ React8.createElement(
     "div",
     {
       "data-cart-edit-banner": true,
@@ -3289,8 +3222,8 @@ function PageOverlayControls({
         letterSpacing: 0
       }
     },
-    /* @__PURE__ */ React10.createElement("span", null, "\u7DE8\u96C6\u4E2D\uFF1A", activeCartEditBox.name),
-    /* @__PURE__ */ React10.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement("span", null, "\u7DE8\u96C6\u4E2D\uFF1A", activeCartEditBox.name),
+    /* @__PURE__ */ React8.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React8.createElement(
       "button",
       {
         type: "button",
@@ -3307,7 +3240,7 @@ function PageOverlayControls({
         }
       },
       "\u30AD\u30E3\u30F3\u30BB\u30EB"
-    ), /* @__PURE__ */ React10.createElement(
+    ), /* @__PURE__ */ React8.createElement(
       "button",
       {
         type: "button",
@@ -3325,7 +3258,7 @@ function PageOverlayControls({
       },
       "\u5B8C\u4E86"
     ))
-  ) : null, cartTransfer ? /* @__PURE__ */ React10.createElement(
+  ) : null, cartTransfer ? /* @__PURE__ */ React8.createElement(
     "div",
     {
       "data-cart-transfer": true,
@@ -3343,7 +3276,7 @@ function PageOverlayControls({
         willChange: "transform"
       }
     },
-    /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement(
       "div",
       {
         style: {
@@ -3355,7 +3288,7 @@ function PageOverlayControls({
           willChange: "transform"
         }
       },
-      /* @__PURE__ */ React10.createElement(
+      /* @__PURE__ */ React8.createElement(
         "div",
         {
           style: {
@@ -3367,10 +3300,10 @@ function PageOverlayControls({
             willChange: "transform, opacity"
           }
         },
-        /* @__PURE__ */ React10.createElement(BoxThumbnail, { fruits: cartTransfer.fruits, width: 144, height: 102 })
+        /* @__PURE__ */ React8.createElement(BoxThumbnail, { fruits: cartTransfer.fruits, width: 144, height: 102 })
       )
     )
-  ) : null, dragClone && (dragClone.type === "combo" ? /* @__PURE__ */ React10.createElement(
+  ) : null, dragClone && (dragClone.type === "combo" ? /* @__PURE__ */ React8.createElement(
     BoxThumbnail,
     {
       fruits: dragClone.fruits,
@@ -3383,7 +3316,7 @@ function PageOverlayControls({
         zIndex: 50
       }
     }
-  ) : /* @__PURE__ */ React10.createElement(
+  ) : /* @__PURE__ */ React8.createElement(
     "img",
     {
       src: FRUIT_ITEMS[dragClone.appleId].wholeSrc,
@@ -3402,7 +3335,7 @@ function PageOverlayControls({
       },
       alt: ""
     }
-  )), /* @__PURE__ */ React10.createElement(
+  )), /* @__PURE__ */ React8.createElement(
     "button",
     {
       type: "button",
@@ -3425,7 +3358,7 @@ function PageOverlayControls({
         WebkitTapHighlightColor: "transparent"
       }
     },
-    /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement(
       "span",
       {
         style: {
@@ -3436,7 +3369,7 @@ function PageOverlayControls({
       },
       "(size)"
     ),
-    /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement(
       "span",
       {
         style: {
@@ -3452,7 +3385,7 @@ function PageOverlayControls({
           background: "transparent"
         }
       },
-      /* @__PURE__ */ React10.createElement(
+      /* @__PURE__ */ React8.createElement(
         "span",
         {
           style: {
@@ -3462,7 +3395,7 @@ function PageOverlayControls({
         },
         requestedSize.size
       ),
-      /* @__PURE__ */ React10.createElement(
+      /* @__PURE__ */ React8.createElement(
         "span",
         {
           style: {
@@ -3474,7 +3407,7 @@ function PageOverlayControls({
         requestedSize.weight
       )
     )
-  ), /* @__PURE__ */ React10.createElement(
+  ), /* @__PURE__ */ React8.createElement(
     "button",
     {
       ref: pageCartRef,
@@ -3501,7 +3434,7 @@ function PageOverlayControls({
         animation: cartCountMotion ? `cartArrivalPulse ${CART_COUNT_MOTION_MS}ms cubic-bezier(.2,.8,.2,1)` : "none"
       }
     },
-    /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement(
       "img",
       {
         src: "img/icon/cart.svg",
@@ -3517,7 +3450,7 @@ function PageOverlayControls({
         }
       }
     ),
-    /* @__PURE__ */ React10.createElement(
+    /* @__PURE__ */ React8.createElement(
       "span",
       {
         style: {
@@ -3527,7 +3460,7 @@ function PageOverlayControls({
         }
       },
       "(cart)",
-      /* @__PURE__ */ React10.createElement(
+      /* @__PURE__ */ React8.createElement(
         "span",
         {
           "data-page-cart-count": true,
@@ -3544,7 +3477,7 @@ function PageOverlayControls({
             pointerEvents: "none"
           }
         },
-        cartCountMotion ? /* @__PURE__ */ React10.createElement(React10.Fragment, null, /* @__PURE__ */ React10.createElement(
+        cartCountMotion ? /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(
           "span",
           {
             "aria-hidden": "true",
@@ -3555,7 +3488,7 @@ function PageOverlayControls({
             }
           },
           cartCountMotion.from
-        ), /* @__PURE__ */ React10.createElement(
+        ), /* @__PURE__ */ React8.createElement(
           "span",
           {
             "aria-hidden": "true",
@@ -3573,7 +3506,7 @@ function PageOverlayControls({
 }
 
 // src/main.jsx
-var { useMemo: useMemo5, useState: useState4, useEffect: useEffect4, useRef: useRef5 } = React11;
+var { useMemo: useMemo4, useState: useState4, useEffect: useEffect5, useRef: useRef6 } = React9;
 function App() {
   const {
     rotationX,
@@ -3633,7 +3566,7 @@ function App() {
   const cartContentOffset = CART_DRAWER_WIDTH * 0.28 * cartLayoutProgress;
   const topCatalogDrawerViewportOffset = CART_DRAWER_WIDTH * topCatalogLayoutProgress;
   const catalogSwitchOffset = topCatalogDrawerViewportOffset / 2 - cartContentOffset;
-  const selectedBoxLayout = useMemo5(
+  const selectedBoxLayout = useMemo4(
     () => createBoxLayout(selectedSize.boxWidth, selectedSize.boxDepth),
     [selectedSize.boxWidth, selectedSize.boxDepth]
   );
@@ -3642,7 +3575,7 @@ function App() {
   const activeCatalogIndex = Math.max(0, CATALOG_TABS.findIndex((tab) => tab.id === activeCatalogTab));
   const isFruitCatalog = activeCatalogTab === "fruit";
   const activeCatalogItems = isFruitCatalog ? FRUIT_ITEMS : activeCatalogTab === "history" ? HISTORY_BOX_ITEMS : POPULAR_BOX_ITEMS;
-  const activeCatalogItemsRef = useRef5(activeCatalogItems);
+  const activeCatalogItemsRef = useRef6(activeCatalogItems);
   activeCatalogItemsRef.current = activeCatalogItems;
   const activeCatalogCount = activeCatalogItems.length;
   const fruitSlotWidth = 126;
@@ -3686,35 +3619,35 @@ function App() {
   const scrollbarTrackWidth = fruitViewportWidth;
   const scrollbarThumbWidth = scrollbarReferenceMaxOffset > 0 ? Math.max(38, scrollbarTrackWidth * fruitViewportWidth / fruitContentWidth) : scrollbarTrackWidth;
   const scrollbarThumbX = scrollbarReferenceMaxOffset > 0 ? (scrollbarTrackWidth - scrollbarThumbWidth) * (liveFruitOffset / scrollbarReferenceMaxOffset) : 0;
-  const boxScreenRef = useRef5(null);
-  const groupRef = useRef5(null);
-  const pageCartRef = useRef5(null);
-  const cartTransferTimersRef = useRef5([]);
-  const nextPlacedIdRef = useRef5(0);
-  const nextPlacementMotionRef = useRef5(0);
-  const draggingAppleIdRef = useRef5(null);
-  const draggingComboIndexRef = useRef5(null);
-  const requestPlaceComboRef = useRef5(null);
-  const dragOffsetRef = useRef5({ x: 0, y: 0 });
-  const dragStartRef = useRef5({ x: 0, y: 0 });
-  const didDragRef = useRef5(false);
-  const fruitStripDragRef = useRef5({ active: false, startX: 0, startOffset: 0 });
-  const fruitDragDeltaRef = useRef5(0);
-  const fruitVelocityRef = useRef5({ x: 0, lastDelta: 0, lastTime: 0 });
-  const fruitOffsetRef = useRef5(fruitOffset);
-  const maxFruitOffsetRef = useRef5(maxFruitOffset);
-  const pendingAppleGestureRef = useRef5(null);
-  const pendingComboGestureRef = useRef5(null);
-  const requestedSizeIndexRef = useRef5(requestedSizeIndex);
-  const selectedSizeIndexRef = useRef5(selectedSizeIndex);
-  const displayedScreenShiftRef = useRef5(displayedScreenShift);
-  const sizeSpinRunRef = useRef5({ running: false, rafId: 0 });
-  const sizeShakeRunRef = useRef5({ running: false, rafId: 0 });
-  const sizeSpinFruitTimersRef = useRef5([]);
-  const cartLayoutRafRef = useRef5(0);
-  const cartLayoutProgressRef = useRef5(cartLayoutProgress);
-  const topCatalogLayoutRafRef = useRef5(0);
-  const topCatalogLayoutProgressRef = useRef5(topCatalogLayoutProgress);
+  const boxScreenRef = useRef6(null);
+  const groupRef = useRef6(null);
+  const pageCartRef = useRef6(null);
+  const cartTransferTimersRef = useRef6([]);
+  const nextPlacedIdRef = useRef6(0);
+  const nextPlacementMotionRef = useRef6(0);
+  const draggingAppleIdRef = useRef6(null);
+  const draggingComboIndexRef = useRef6(null);
+  const requestPlaceComboRef = useRef6(null);
+  const dragOffsetRef = useRef6({ x: 0, y: 0 });
+  const dragStartRef = useRef6({ x: 0, y: 0 });
+  const didDragRef = useRef6(false);
+  const fruitStripDragRef = useRef6({ active: false, startX: 0, startOffset: 0 });
+  const fruitDragDeltaRef = useRef6(0);
+  const fruitVelocityRef = useRef6({ x: 0, lastDelta: 0, lastTime: 0 });
+  const fruitOffsetRef = useRef6(fruitOffset);
+  const maxFruitOffsetRef = useRef6(maxFruitOffset);
+  const pendingAppleGestureRef = useRef6(null);
+  const pendingComboGestureRef = useRef6(null);
+  const requestedSizeIndexRef = useRef6(requestedSizeIndex);
+  const selectedSizeIndexRef = useRef6(selectedSizeIndex);
+  const displayedScreenShiftRef = useRef6(displayedScreenShift);
+  const sizeSpinRunRef = useRef6({ running: false, rafId: 0 });
+  const sizeShakeRunRef = useRef6({ running: false, rafId: 0 });
+  const sizeSpinFruitTimersRef = useRef6([]);
+  const cartLayoutRafRef = useRef6(0);
+  const cartLayoutProgressRef = useRef6(cartLayoutProgress);
+  const topCatalogLayoutRafRef = useRef6(0);
+  const topCatalogLayoutProgressRef = useRef6(topCatalogLayoutProgress);
   fruitOffsetRef.current = fruitOffset;
   maxFruitOffsetRef.current = maxFruitOffset;
   requestedSizeIndexRef.current = requestedSizeIndex;
@@ -4011,7 +3944,7 @@ function App() {
     setOpenComboIndex(comboIndex);
     setReplacementFruitId(null);
   };
-  useEffect4(() => {
+  useEffect5(() => {
     window.addEventListener("pointermove", onWindowMove);
     window.addEventListener("pointerup", onWindowUp);
     window.addEventListener("pointercancel", onWindowUp);
@@ -4021,17 +3954,17 @@ function App() {
       window.removeEventListener("pointercancel", onWindowUp);
     };
   }, []);
-  useEffect4(() => () => {
+  useEffect5(() => () => {
     cartTransferTimersRef.current.forEach(clearTimeout);
     cartTransferTimersRef.current = [];
   }, []);
-  useEffect4(() => {
+  useEffect5(() => {
     const onResize = () => setFruitSlots(getFruitSlots());
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [cartOpen]);
-  useEffect4(() => {
+  useEffect5(() => {
     cancelAnimationFrame(cartLayoutRafRef.current);
     const from = cartLayoutProgressRef.current;
     const to = cartOpen ? 1 : 0;
@@ -4055,7 +3988,7 @@ function App() {
     cartLayoutRafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(cartLayoutRafRef.current);
   }, [cartOpen]);
-  useEffect4(() => {
+  useEffect5(() => {
     cancelAnimationFrame(topCatalogLayoutRafRef.current);
     const from = topCatalogLayoutProgressRef.current;
     const to = cartOpen ? 1 : 0;
@@ -4080,10 +4013,10 @@ function App() {
     topCatalogLayoutRafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(topCatalogLayoutRafRef.current);
   }, [cartOpen]);
-  useEffect4(() => {
+  useEffect5(() => {
     setFruitOffset((offset) => Math.min(offset, maxFruitOffset));
   }, [maxFruitOffset]);
-  useEffect4(() => {
+  useEffect5(() => {
     sizeSpinFruitTimersRef.current.forEach(clearTimeout);
     sizeSpinFruitTimersRef.current = [];
     if (!isSizeSpinning) {
@@ -4104,7 +4037,7 @@ function App() {
       sizeSpinFruitTimersRef.current = [];
     };
   }, [isSizeSpinning]);
-  useEffect4(() => {
+  useEffect5(() => {
     if (!isSizeShaking || sizeShakeRunRef.current.running) return void 0;
     const run = sizeShakeRunRef.current;
     Object.assign(run, {
@@ -4193,7 +4126,7 @@ function App() {
       sizeShakeRunRef.current.running = false;
     };
   }, [isSizeShaking]);
-  useEffect4(() => {
+  useEffect5(() => {
     if (!isSizeSpinning || sizeSpinRunRef.current.running) return void 0;
     const run = sizeSpinRunRef.current;
     Object.assign(run, {
@@ -4462,7 +4395,7 @@ function App() {
   );
   const cartTotal = cartBoxes.reduce((sum, box) => sum + box.price * box.quantity, 0);
   const cartAttentionGuide = cartOpen && cartBoxes.length === 0 && placedFruits.length > 0 && !hasEverAddedBoxToCart;
-  useEffect4(() => {
+  useEffect5(() => {
     window.__FRUITSLAB_CART_ATTENTION_GUIDE__ = cartAttentionGuide;
     return () => {
       window.__FRUITSLAB_CART_ATTENTION_GUIDE__ = false;
@@ -4470,7 +4403,7 @@ function App() {
   }, [cartAttentionGuide]);
   const activeCartEditBox = cartEditSession ? cartBoxes.find((box) => box.id === cartEditSession.boxId) ?? null : null;
   const formatYen = (value) => `${value.toLocaleString("ja-JP")}\u5186\uFF08\u7A0E\u8FBC\uFF09`;
-  return /* @__PURE__ */ React11.createElement(
+  return /* @__PURE__ */ React9.createElement(
     "main",
     {
       "data-cart-attention-guide": cartAttentionGuide ? "active" : "inactive",
@@ -4480,7 +4413,7 @@ function App() {
       },
       style: { width: "100%", background: "#F7F8FA" }
     },
-    /* @__PURE__ */ React11.createElement("section", { className: "hero-section", "aria-label": "\u30D5\u30EB\u30FC\u30C4\u30DC\u30C3\u30AF\u30B9\u3092\u3064\u304F\u308B" }, /* @__PURE__ */ React11.createElement("div", { className: "hero-interactive" }, /* @__PURE__ */ React11.createElement(
+    /* @__PURE__ */ React9.createElement("section", { className: "hero-section", "aria-label": "\u30D5\u30EB\u30FC\u30C4\u30DC\u30C3\u30AF\u30B9\u3092\u3064\u304F\u308B" }, /* @__PURE__ */ React9.createElement("div", { className: "hero-interactive" }, /* @__PURE__ */ React9.createElement(
       BoxScene,
       {
         displayedScreenShift,
@@ -4525,7 +4458,7 @@ function App() {
         rotateDownLimit,
         onSceneReady: () => setSceneReady(true)
       }
-    ), /* @__PURE__ */ React11.createElement(
+    ), /* @__PURE__ */ React9.createElement(
       "div",
       {
         role: "status",
@@ -4551,7 +4484,7 @@ function App() {
           zIndex: 12
         }
       }
-    ), /* @__PURE__ */ React11.createElement(
+    ), /* @__PURE__ */ React9.createElement(
       TopCatalog,
       {
         activeCatalogCount,
@@ -4598,7 +4531,7 @@ function App() {
         toggleFavoriteFruit,
         turnFruitPage
       }
-    ), /* @__PURE__ */ React11.createElement(
+    ), /* @__PURE__ */ React9.createElement(
       PageOverlayControls,
       {
         activeCartEditBox,
@@ -4614,7 +4547,7 @@ function App() {
         requestedSize,
         startSizeChange
       }
-    ), /* @__PURE__ */ React11.createElement(
+    ), /* @__PURE__ */ React9.createElement(
       CartDrawer,
       {
         cartOpen,
@@ -4636,11 +4569,9 @@ function App() {
         formatYen,
         cartTotal
       }
-    ))),
-    /* @__PURE__ */ React11.createElement(AboutSection, null),
-    /* @__PURE__ */ React11.createElement(ProductCatalog, { favoriteFruitIds, toggleFavoriteFruit })
+    )))
   );
 }
 var root = createRoot(document.getElementById("root"));
-root.render(/* @__PURE__ */ React11.createElement(App, null));
+root.render(/* @__PURE__ */ React9.createElement(App, null));
 //# sourceMappingURL=app.js.map

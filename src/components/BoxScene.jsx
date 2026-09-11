@@ -93,7 +93,7 @@ export function BoxScene({
     dpr={[1, 1.5]}
     gl={{ antialias: true, powerPreference: 'high-performance' }}
   >
-    <ViewOffset shift={displayedScreenShift} shiftX={cartContentOffset} extendBelowViewport />
+    <ViewOffset shift={displayedScreenShift} shiftX={cartContentOffset} />
     <color attach="background" args={['#F7F8FA']} />
     <ambientLight intensity={lightIntensity * 0.25} />
     <directionalLight position={[10, 10, 5]} intensity={lightIntensity} castShadow />
